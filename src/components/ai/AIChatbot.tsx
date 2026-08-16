@@ -1,0 +1,127 @@
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MessageSquare, X, Send, Sparkles, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+export function AIChatbot() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([
+    { role: "assistant", content: "Olá! Sou a Royal IA, sua secretária virtual. Como posso ajudar com seu agendamento hoje?" }
+  ]);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const handleSend = () => {
+    if (!message.trim()) return;
+    
+    const newMessages = [...messages, { role: "user", content: message }];
+    setMessages(newMessages);
+    setMessage("");
+    setIsTyping(true);
+
+    // Mock response
+    setTimeout(() => {
+      setMessages([...newMessages, { 
+        role: "assistant", 
+        content: "Perfeito! Verifiquei aqui e temos horários disponíveis para hoje às 15:00 com o barbeiro Marcos. Deseja confirmar?" 
+      }]);
+      setIsTyping(false);
+    }, 1500);
+  };
+
+  return (
+    <>
+      {/* Trigger Button */}
+      <Button
+        onClick={() => setIsOpen(true)}
+        className={`fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 p-0 shadow-2xl transition-all duration-300 ${isOpen ? 'scale-0' : 'scale-100'} bg-primary hover:bg-primary/90 text-primary-foreground`}
+      >
+        <MessageSquare className="w-6 h-6" />
+      </Button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 100, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 100, scale: 0.9 }}
+            className="fixed bottom-6 right-6 z-[60] w-[380px] h-[550px] bg-card border border-border/40 shadow-2xl rounded-3xl flex flex-col overflow-hidden"
+          >
+            {/* Header */}
+            <div className="p-6 bg-primary text-primary-foreground flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold">Royal IA</h4>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-[10px] opacity-80 uppercase tracking-widest font-bold">Online</span>
+                  </div>
+                </div>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsOpen(false)}
+                className="text-white hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-grow p-6 overflow-y-auto space-y-4">
+              {messages.map((msg, i) => (
+                <div 
+                  key={i} 
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div 
+                    className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${
+                      msg.role === 'user' 
+                        ? 'bg-primary text-primary-foreground rounded-tr-none' 
+                        : 'bg-muted text-foreground rounded-tl-none border border-border/40'
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-muted p-4 rounded-2xl rounded-tl-none border border-border/40 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span className="text-xs text-muted-foreground italic">Digitando...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input */}
+            <div className="p-6 border-t border-border/40 bg-card/50 backdrop-blur-sm">
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="Como posso ajudar?" 
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  className="rounded-full bg-background border-border/40"
+                />
+                <Button 
+                  onClick={handleSend}
+                  size="icon" 
+                  className="rounded-full shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
