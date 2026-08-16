@@ -36,14 +36,14 @@ function LandingPage() {
             >
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-semibold tracking-widest uppercase mb-6">
                 <Sparkles className="w-3 h-3" />
-                Experiência Signature
+                Excelência e Honra
               </span>
               <h1 className="text-5xl md:text-7xl font-serif font-bold text-white mb-6 leading-tight">
-                A Arte da Cutelaria <br />
-                <span className="text-primary italic">Redefinida</span>
+                The Royal Cut <br />
+                <span className="text-primary italic">Barbearia e Irmandade</span>
               </h1>
               <p className="max-w-2xl mx-auto text-lg md:text-xl text-gray-300 mb-10">
-                Mais que um corte, um ritual. Combinamos tradição clássica com tecnologia de ponta para o homem moderno.
+                Muito mais que um corte. Um ambiente de respeito, conversas edificantes e excelência no serviço, liderado por Thiago.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button onClick={() => booking.open()} size="lg" className="h-14 px-8 text-base bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-bold">
@@ -69,32 +69,32 @@ function LandingPage() {
           <div className="container px-6 mx-auto">
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
               <div>
-                <h2 className="text-sm font-semibold tracking-[0.3em] text-primary uppercase mb-4">Experience Menu</h2>
-                <h3 className="text-4xl md:text-5xl font-serif font-bold">Nossas Experiências</h3>
+                <h2 className="text-sm font-semibold tracking-[0.3em] text-primary uppercase mb-4">Galeria de Serviços</h2>
+                <h3 className="text-4xl md:text-5xl font-serif font-bold">Excelência no Cuidado</h3>
               </div>
               <p className="max-w-md text-muted-foreground">
-                De rituais com toalhas quentes a cortes de precisão, cada serviço é desenhado para sua máxima satisfação.
+                De cortes clássicos a cuidados com a barba, cada serviço é executado com dedicação e respeito à sua imagem.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
                 {
-                  title: "Barboterapia Signature",
-                  desc: "Ritual completo com óleos essenciais, toalha quente e massagem facial.",
+                  title: "Barboterapia Tradicional",
+                  desc: "Cuidado completo com óleos essenciais, toalha quente e o toque clássico da navalha.",
                   price: "R$ 85",
                   img: "https://images.unsplash.com/photo-1621605815841-aa378137397b?auto=format&fit=crop&q=80&w=800"
                 },
                 {
-                  title: "The Executive Cut",
-                  desc: "Corte de precisão, lavagem premium e finalização com pomada artesanal.",
+                  title: "Corte de Cavalheiro",
+                  desc: "Corte de precisão, lavagem e finalização com atenção a cada detalhe.",
                   price: "R$ 95",
                   img: "https://images.unsplash.com/photo-1599351431247-f10b21698303?auto=format&fit=crop&q=80&w=800"
                 },
                 {
-                  title: "VIP Dia do Noivo",
-                  desc: "Experiência exclusiva em lounge privado com open bar de chopp e charutos.",
-                  price: "Consultar",
+                  title: "Espaço de Confraternização",
+                  desc: "Ambiente reservado para momentos de união e bons diálogos entre irmãos.",
+                  price: "Cortesia",
                   img: "https://images.unsplash.com/photo-1512690196222-7c74e041bd2e?auto=format&fit=crop&q=80&w=800"
                 }
               ].map((item, i) => (
@@ -134,10 +134,10 @@ function LandingPage() {
           <div className="container px-6 mx-auto relative z-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
               <div>
-                <h2 className="text-sm font-semibold tracking-[0.3em] text-primary uppercase mb-4">Loyalty Program</h2>
-                <h3 className="text-4xl md:text-5xl font-serif font-bold mb-8">Clube de Assinatura & Barber Points</h3>
+                <h2 className="text-sm font-semibold tracking-[0.3em] text-primary uppercase mb-4">Irmandade</h2>
+                <h3 className="text-4xl md:text-5xl font-serif font-bold mb-8">Clube de Irmandade & Barber Points</h3>
                 <p className="text-muted-foreground text-lg mb-10 leading-relaxed">
-                  Torne-se um membro do Royal Club e desfrute de vantagens exclusivas, como cortes ilimitados, bebidas no Lounge e acesso a eventos de networking.
+                  Faça parte da nossa aliança e desfrute de benefícios exclusivos, fortalecendo laços e garantindo o melhor cuidado.
                 </p>
                 <div className="space-y-6 mb-10">
                   <div className="flex items-start gap-4">
@@ -154,8 +154,8 @@ function LandingPage() {
                       <Scissors className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <h5 className="font-bold mb-1">Assinatura Executive</h5>
-                      <p className="text-sm text-muted-foreground">Cortes ilimitados e Barboterapia mensal por um valor fixo. Prioridade total na agenda.</p>
+                      <h5 className="font-bold mb-1">Membro Aliança</h5>
+                      <p className="text-sm text-muted-foreground">Cortes planejados e cuidado constante. Prioridade total para quem caminha conosco.</p>
                     </div>
                   </div>
                 </div>
@@ -178,7 +178,7 @@ function LandingPage() {
                     <span className="text-xs font-medium text-muted-foreground">Membros Ativos agora</span>
                   </div>
                   <div className="text-3xl font-bold font-serif mb-1">128</div>
-                  <p className="text-[10px] text-muted-foreground">No Lounge desfrutando da Royal Experience.</p>
+                  <p className="text-[10px] text-muted-foreground">Irmãos que confiam em nosso trabalho.</p>
                 </div>
               </div>
             </div>

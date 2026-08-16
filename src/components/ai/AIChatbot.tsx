@@ -11,7 +11,7 @@ export function AIChatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<{ role: "assistant" | "user" | "system"; content: string }[]>([
-    { role: "assistant", content: "Olá! Sou a Royal IA, sua secretária virtual. Como posso ajudar com seu agendamento hoje?" }
+    { role: "assistant", content: "Olá, seja bem-vindo à The Royal Cut, a barbearia do Thiago. Como posso servir você hoje?" }
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);

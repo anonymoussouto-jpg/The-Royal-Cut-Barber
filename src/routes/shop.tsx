@@ -61,11 +61,11 @@ function GroomingStore() {
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 mb-4">
               <Tag className="w-3 h-3" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Premium Selection</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest">Seleção de Excelência</span>
             </div>
             <h1 className="text-5xl font-serif font-bold mb-4">Grooming Store</h1>
             <p className="text-muted-foreground text-lg max-w-xl">
-              Produtos de alto padrão selecionados por nossos especialistas para manter seu visual impecável em casa.
+              Produtos de alta qualidade selecionados para manter sua imagem com dignidade e cuidado.
             </p>
           </motion.div>
 

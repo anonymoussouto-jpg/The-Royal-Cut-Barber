@@ -11,10 +11,10 @@ export const Route = createFileRoute("/membership")({
 
 const plans = [
   {
-    name: "Royal Club Basic",
+    name: "Membro Fundador",
     price: "R$ 149,90",
     period: "/mês",
-    description: "Ideal para manter o corte em dia com praticidade.",
+    description: "Para quem valoriza o essencial com excelência e cuidado.",
     icon: Star,
     features: [
       "2 Cortes de Cabelo inclusos",
@@ -24,13 +24,13 @@ const plans = [
       "Café Nespresso liberado"
     ],
     highlight: false,
-    buttonText: "Assinar Basic"
+    buttonText: "Unir-se como Fundador"
   },
   {
-    name: "Royal Club Executive",
+    name: "Membro Aliança",
     price: "R$ 289,90",
     period: "/mês",
-    description: "A experiência completa para o homem executivo.",
+    description: "Cuidado completo e presença constante na irmandade.",
     icon: Crown,
     features: [
       "Cortes Ilimitados",
@@ -38,27 +38,27 @@ const plans = [
       "Sobrancelha inclusa",
       "15% de desconto em produtos",
       "1 Cerveja Artesanal por visita",
-      "Acesso à Área VIP Lounge"
+      "Acesso ao Espaço de Confraternização"
     ],
     highlight: true,
-    buttonText: "Assinar Executive"
+    buttonText: "Firmar Aliança"
   },
   {
-    name: "Royal Club VIP",
+    name: "Irmandade Royal",
     price: "R$ 499,90",
     period: "/mês",
-    description: "O auge do luxo e exclusividade na The Royal Cut.",
+    description: "Compromisso total com a excelência e honra mútua.",
     icon: ShieldCheck,
     features: [
       "Todos os serviços ilimitados",
-      "Lounge VIP privativo",
-      "Bar aberto (Cerveja e Whisky)",
+      "Espaço reservado para conversas edificantes",
+      "Prioridade absoluta na agenda",
       "20% de desconto em produtos",
-      "Estacionamento com manobrista",
-      "Convite para eventos exclusivos"
+      "Manobrista incluso",
+      "Convite para encontros da irmandade"
     ],
     highlight: false,
-    buttonText: "Assinar VIP"
+    buttonText: "Fazer parte da Irmandade"
   }
 ];
 
@@ -73,11 +73,11 @@ function MembershipPage() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20 mb-6">
             <Crown className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-[0.2em]">Exclusividade</span>
+            <span className="text-xs font-bold uppercase tracking-[0.2em]">Honra e Irmandade</span>
           </div>
-          <h1 className="text-5xl md:text-6xl font-serif font-bold mb-6">Royal Club</h1>
+          <h1 className="text-5xl md:text-6xl font-serif font-bold mb-6">Clube de Irmandade</h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Junte-se à elite da The Royal Cut e transforme seu cuidado pessoal em um ritual de puro luxo e conveniência.
+            Junte-se à nossa aliança na The Royal Cut e transforme seu cuidado pessoal em um momento de honra e fraternidade.
           </p>
         </motion.div>
 
@@ -147,11 +147,11 @@ function MembershipPage() {
           transition={{ delay: 0.6 }}
           className="mt-20 text-center max-w-3xl mx-auto p-8 rounded-2xl border border-border/40 bg-card/30"
         >
-          <h3 className="text-xl font-bold mb-4">Como funciona a assinatura?</h3>
+          <h3 className="text-xl font-bold mb-4">Como funciona a nossa aliança?</h3>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            As assinaturas do Royal Club são recorrentes e cobradas mensalmente via cartão de crédito ou PIX automático. 
-            Você pode cancelar ou alterar seu plano a qualquer momento sem taxas ocultas. 
-            Os benefícios são ativados imediatamente após a confirmação do primeiro pagamento.
+            As participações no Clube são recorrentes e processadas mensalmente. 
+            Você pode ajustar sua participação a qualquer momento com total transparência. 
+            Os benefícios de honra são ativados imediatamente após a confirmação da sua aliança.
           </p>
         </motion.div>
       </div>

@@ -59,9 +59,9 @@ function ServicesPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-16"
         >
-          <h1 className="text-5xl font-serif font-bold mb-4">Serviços & Experiências</h1>
+          <h1 className="text-5xl font-serif font-bold mb-4">Serviços & Excelência</h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Onde a tradição encontra o luxo. Escolha o serviço ideal para o seu estilo.
+            Onde a tradição encontra o cuidado. Escolha o serviço que melhor reflete sua honra.
           </p>
         </motion.div>
 
