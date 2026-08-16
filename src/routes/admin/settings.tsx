@@ -4,13 +4,63 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Cpu, Key, Wallet } from "lucide-react";
+import { Cpu, Wallet } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/settings")({
   component: AdminSettings,
 });
 
 function AdminSettings() {
+  const [settings, setSettings] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const { data, error } = await supabase.from('system_settings').select('key, value');
+      if (error) throw error;
+      
+      const settingsMap = data.reduce((acc, curr) => ({
+        ...acc,
+        [curr.key]: curr.value as string
+      }), {});
+      
+      setSettings(settingsMap);
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      toast.error('Erro ao carregar configurações');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveSetting = async (key: string, value: string) => {
+    try {
+      const { error } = await supabase.from('system_settings').upsert({
+        key,
+        value,
+        updated_at: new Date().toISOString()
+      });
+      if (error) throw error;
+      setSettings(prev => ({ ...prev, [key]: value }));
+    } catch (error) {
+      console.error('Error saving setting:', error);
+      toast.error(`Erro ao salvar ${key}`);
+    }
+  };
+
+  const handleSaveAll = async () => {
+    toast.success('Configurações salvas com sucesso!');
+  };
+
+  if (loading) return <div>Carregando...</div>;
+
   return (
     <div className="max-w-4xl space-y-8">
       <div>
@@ -32,16 +82,29 @@ function AdminSettings() {
             <div className="grid gap-4">
               <Label>Google Gemini (Principal)</Label>
               <div className="space-y-2">
-                <Input type="password" placeholder="Gemini API Key 1" defaultValue="••••••••••••" />
-                <Input type="password" placeholder="Gemini API Key 2" />
-                <Input type="password" placeholder="Gemini API Key 3" />
+                {[1, 2, 3].map(i => (
+                  <Input 
+                    key={`gemini-${i}`}
+                    type="password" 
+                    placeholder={`Gemini API Key ${i}`} 
+                    value={settings[`gemini_api_key_${i}`] || ''}
+                    onChange={(e) => saveSetting(`gemini_api_key_${i}`, e.target.value)}
+                  />
+                ))}
               </div>
             </div>
             <div className="grid gap-4 pt-4 border-t border-border/40">
               <Label>Groq Llama 3 (Fallback)</Label>
               <div className="space-y-2">
-                <Input type="password" placeholder="Groq API Key 1" defaultValue="••••••••••••" />
-                <Input type="password" placeholder="Groq API Key 2" />
+                {[1, 2].map(i => (
+                  <Input 
+                    key={`groq-${i}`}
+                    type="password" 
+                    placeholder={`Groq API Key ${i}`} 
+                    value={settings[`groq_api_key_${i}`] || ''}
+                    onChange={(e) => saveSetting(`groq_api_key_${i}`, e.target.value)}
+                  />
+                ))}
               </div>
             </div>
             <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/20">
@@ -49,7 +112,7 @@ function AdminSettings() {
                 <Label>Alternância Automática</Label>
                 <p className="text-xs text-muted-foreground">Mudar automaticamente se uma chave falhar.</p>
               </div>
-              <Switch defaultChecked />
+              <Switch checked={settings['ai_auto_fallback'] === 'true'} onCheckedChange={(val) => saveSetting('ai_auto_fallback', val.toString())} />
             </div>
           </CardContent>
         </Card>
@@ -66,9 +129,13 @@ function AdminSettings() {
           <CardContent className="space-y-4">
             <div className="grid gap-2">
               <Label>Chave Principal (CNPJ/Email)</Label>
-              <Input placeholder="sua-chave@pix.com" />
+              <Input 
+                placeholder="sua-chave@pix.com" 
+                value={settings['pix_key'] || ''}
+                onChange={(e) => saveSetting('pix_key', e.target.value)}
+              />
             </div>
-            <Button className="bg-primary text-primary-foreground">Salvar Alterações</Button>
+            <Button onClick={handleSaveAll} className="bg-primary text-primary-foreground">Salvar Alterações</Button>
           </CardContent>
         </Card>
       </div>

@@ -1,33 +1,62 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, X, Send, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useServerFn } from "@tanstack/react-start";
+import { chatWithAI } from "@/lib/ai.functions";
+import { toast } from "sonner";
 
 export function AIChatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<{ role: "assistant" | "user" | "system"; content: string }[]>([
     { role: "assistant", content: "Olá! Sou a Royal IA, sua secretária virtual. Como posso ajudar com seu agendamento hoje?" }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = () => {
-    if (!message.trim()) return;
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
+
+  const sendMessage = useServerFn(chatWithAI);
+
+  const handleSend = async () => {
+    if (!message.trim() || isTyping) return;
     
-    const newMessages = [...messages, { role: "user", content: message }];
+    const userMessage = { role: "user" as const, content: message };
+    const newMessages = [...messages, userMessage];
+    
     setMessages(newMessages);
     setMessage("");
     setIsTyping(true);
 
-    // Mock response
-    setTimeout(() => {
-      setMessages([...newMessages, { 
-        role: "assistant", 
-        content: "Perfeito! Verifiquei aqui e temos horários disponíveis para hoje às 15:00 com o barbeiro Marcos. Deseja confirmar?" 
+    try {
+      const response = await sendMessage({
+        data: {
+          messages: newMessages.map(m => ({ role: m.role, content: m.content }))
+        }
+      });
+
+      setMessages(prev => [...prev, { 
+        role: "assistant" as const, 
+        content: response.content || "Desculpe, não consegui processar sua solicitação."
       }]);
+    } catch (error) {
+      console.error("AI Error:", error);
+      toast.error("Erro ao conectar com a IA");
+      setMessages(prev => [...prev, { 
+        role: "assistant" as const, 
+        content: "Houve um erro técnico. Por favor, tente novamente."
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -98,6 +127,7 @@ export function AIChatbot() {
                   </div>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Input */}

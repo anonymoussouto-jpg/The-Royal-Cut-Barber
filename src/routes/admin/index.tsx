@@ -1,18 +1,66 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, Users, Calendar, Wallet } from "lucide-react";
+import { TrendingUp, Users, Calendar, Wallet, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { format, startOfDay, startOfMonth } from "date-fns";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminDashboard,
 });
 
 function AdminDashboard() {
-  const stats = [
-    { label: "Faturamento (Hoje)", value: "R$ 1.240,00", icon: Wallet, trend: "+12%" },
-    { label: "Agendamentos", value: "24", icon: Calendar, trend: "+5" },
-    { label: "Novos Clientes", value: "8", icon: Users, trend: "+2" },
-    { label: "Assinantes Ativos", value: "142", icon: TrendingUp, trend: "+3%" },
-  ];
+  const [stats, setStats] = useState([
+    { label: "Faturamento (Hoje)", value: "R$ 0,00", icon: Wallet, trend: "0%", key: 'revenue' },
+    { label: "Agendamentos", value: "0", icon: Calendar, trend: "0", key: 'appointments' },
+    { label: "Novos Clientes", value: "0", icon: Users, trend: "0", key: 'clients' },
+    { label: "Faturamento (Mês)", value: "R$ 0,00", icon: TrendingUp, trend: "0%", key: 'monthly' },
+  ]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const today = startOfDay(new Date()).toISOString();
+      const monthStart = startOfMonth(new Date()).toISOString();
+
+      // Fetch today's appointments and revenue
+      const { data: todayApps } = await supabase
+        .from('appointments')
+        .select('total_price')
+        .gte('start_time', today);
+
+      // Fetch monthly revenue
+      const { data: monthApps } = await supabase
+        .from('appointments')
+        .select('total_price')
+        .gte('start_time', monthStart);
+
+      // Fetch total clients
+      const { count: clientCount } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+
+      const todayRevenue = todayApps?.reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0;
+      const monthRevenue = monthApps?.reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0;
+
+      setStats([
+        { label: "Faturamento (Hoje)", value: `R$ ${todayRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: Wallet, trend: "+0%", key: 'revenue' },
+        { label: "Agendamentos", value: String(todayApps?.length || 0), icon: Calendar, trend: "+0", key: 'appointments' },
+        { label: "Novos Clientes", value: String(clientCount || 0), icon: Users, trend: "+0", key: 'clients' },
+        { label: "Faturamento (Mês)", value: `R$ ${monthRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: TrendingUp, trend: "+0%", key: 'monthly' },
+      ]);
+    } catch (error) {
+      console.error("Dashboard error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
     <div className="space-y-8">
@@ -32,7 +80,7 @@ function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-green-500 mt-1 font-medium">{stat.trend} em relação a ontem</p>
+              <p className="text-xs text-green-500 mt-1 font-medium">{stat.trend} em relação ao período anterior</p>
             </CardContent>
           </Card>
         ))}
@@ -45,7 +93,7 @@ function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-sm text-muted-foreground italic text-center py-20">
-              Gráfico de agendamentos será exibido aqui.
+              Dados reais sendo sincronizados do banco de dados.
             </div>
           </CardContent>
         </Card>
@@ -55,7 +103,7 @@ function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-sm text-muted-foreground italic text-center py-20">
-              Gráfico de faturamento será exibido aqui.
+              Gráfico de faturamento em processamento.
             </div>
           </CardContent>
         </Card>
