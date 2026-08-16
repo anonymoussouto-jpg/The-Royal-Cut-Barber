@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit2, User, Loader2 } from "lucide-react";
+import { Plus, Trash2, Edit2, User, Loader2, Key, ShieldCheck, Mail } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { createBarberUser } from "@/lib/barbers.functions";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +17,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/admin/staff")({
   component: StaffManagement,
@@ -26,6 +29,8 @@ interface Barber {
   bio: string | null;
   avatar_url: string | null;
   specialties: string[] | null;
+  auth_user_id?: string | null;
+  email?: string | null;
 }
 
 function StaffManagement() {
@@ -37,7 +42,12 @@ function StaffManagement() {
     full_name: "",
     bio: "",
     specialties: "",
+    email: "",
+    password: "",
   });
+
+  const createAccessFn = useServerFn(createBarberUser);
+  const [creatingAccess, setCreatingAccess] = useState(false);
 
   useEffect(() => {
     fetchBarbers();
@@ -76,11 +86,37 @@ function StaffManagement() {
       }
       setIsDialogOpen(false);
       setEditingBarber(null);
-      setFormData({ full_name: "", bio: "", specialties: "" });
+      setFormData({ full_name: "", bio: "", specialties: "", email: "", password: "" });
       fetchBarbers();
     } catch (error) {
       console.error("Error saving barber:", error);
       toast.error("Erro ao salvar barbeiro");
+    }
+  };
+
+  const handleCreateAccess = async () => {
+    if (!editingBarber) return;
+    if (!formData.email || !formData.password) {
+      toast.error("Preencha email e senha temporária");
+      return;
+    }
+
+    setCreatingAccess(true);
+    try {
+      await createAccessFn({
+        data: {
+          barberId: editingBarber.id,
+          email: formData.email,
+          password: formData.password
+        }
+      });
+      toast.success("Acesso criado com sucesso!");
+      fetchBarbers();
+    } catch (error: any) {
+      console.error("Error creating barber access:", error);
+      toast.error(error.message || "Erro ao criar acesso");
+    } finally {
+      setCreatingAccess(false);
     }
   };
 
@@ -103,6 +139,8 @@ function StaffManagement() {
       full_name: barber.full_name,
       bio: barber.bio || "",
       specialties: barber.specialties?.join(", ") || "",
+      email: barber.email || "",
+      password: "",
     });
     setIsDialogOpen(true);
   };
@@ -126,7 +164,7 @@ function StaffManagement() {
           <DialogTrigger asChild>
             <Button className="bg-primary text-primary-foreground" onClick={() => {
               setEditingBarber(null);
-              setFormData({ full_name: "", bio: "", specialties: "" });
+              setFormData({ full_name: "", bio: "", specialties: "", email: "", password: "" });
             }}>
               <Plus className="w-4 h-4 mr-2" /> Novo Barbeiro
             </Button>
@@ -165,9 +203,66 @@ function StaffManagement() {
                   className="bg-background border-border"
                 />
               </div>
-              <DialogFooter>
-                <Button type="submit" className="bg-primary text-primary-foreground">
-                  {editingBarber ? "Salvar Alterações" : "Cadastrar"}
+
+              {editingBarber && (
+                <div className="pt-6 border-t border-border space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ShieldCheck className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Acesso ao Sistema</h3>
+                  </div>
+                  
+                  {editingBarber.auth_user_id ? (
+                    <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl flex items-center gap-3">
+                      <ShieldCheck className="w-5 h-5 text-green-500" />
+                      <div>
+                        <p className="text-xs font-bold text-green-500 uppercase">Acesso Ativo</p>
+                        <p className="text-[10px] text-muted-foreground">{editingBarber.email}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label htmlFor="email" className="text-[10px] uppercase">Email de Login</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            placeholder="email@barbearia.com"
+                            className="bg-background border-border h-9 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="pass" className="text-[10px] uppercase">Senha Temp.</Label>
+                          <Input
+                            id="pass"
+                            type="password"
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            placeholder="******"
+                            className="bg-background border-border h-9 text-xs"
+                          />
+                        </div>
+                      </div>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        className="w-full border-primary/20 hover:bg-primary/5 text-primary h-9 text-xs font-bold"
+                        onClick={handleCreateAccess}
+                        disabled={creatingAccess}
+                      >
+                        {creatingAccess ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Key className="w-3 h-3 mr-2" />}
+                        Criar Acesso ao Sistema
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              <DialogFooter className="pt-4">
+                <Button type="submit" className="bg-primary text-primary-foreground w-full sm:w-auto">
+                  {editingBarber ? "Salvar Perfil" : "Cadastrar Profissional"}
                 </Button>
               </DialogFooter>
             </form>
@@ -177,25 +272,41 @@ function StaffManagement() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {barbers.map((barber) => (
-          <div key={barber.id} className="p-6 rounded-2xl border border-border/40 bg-card/50 relative group">
+          <div key={barber.id} className="p-6 rounded-2xl border border-border/40 bg-card/50 relative group transition-all hover:border-primary/20">
             <div className="flex justify-between items-start mb-4">
-              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-                <User className="w-8 h-8 text-primary" />
+              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border border-primary/20">
+                {barber.avatar_url ? (
+                  <img src={barber.avatar_url} alt={barber.full_name} className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-8 h-8 text-primary" />
+                )}
               </div>
               <div className="flex gap-2">
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(barber)}>
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(barber)} className="hover:bg-primary/10">
                   <Edit2 className="w-4 h-4 text-muted-foreground" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(barber.id)}>
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(barber.id)} className="hover:bg-destructive/10">
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </Button>
               </div>
             </div>
-            <h3 className="font-bold text-lg">{barber.full_name}</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {barber.specialties?.join(", ") || "Barbeiro Master"}
-            </p>
-            <div className="text-xs py-1 px-3 rounded-full bg-primary/10 text-primary w-fit font-bold">Ativo</div>
+            <div className="space-y-1">
+              <h3 className="font-bold text-lg">{barber.full_name}</h3>
+              <p className="text-xs text-muted-foreground">
+                {barber.specialties?.join(", ") || "Barbeiro Especialista"}
+              </p>
+            </div>
+            
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[10px] font-bold uppercase py-0.5">
+                Ativo
+              </Badge>
+              {barber.auth_user_id && (
+                <Badge variant="outline" className="bg-green-500/5 text-green-500 border-green-500/20 text-[10px] font-bold uppercase py-0.5 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" /> Acesso Ativo
+                </Badge>
+              )}
+            </div>
           </div>
         ))}
       </div>

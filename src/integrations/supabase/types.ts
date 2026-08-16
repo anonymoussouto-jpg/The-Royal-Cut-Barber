@@ -104,27 +104,33 @@ export type Database = {
       }
       barbers: {
         Row: {
+          auth_user_id: string | null
           avatar_url: string | null
           bio: string | null
           created_at: string
+          email: string | null
           full_name: string
           id: string
           schedule: Json | null
           specialties: string[] | null
         }
         Insert: {
+          auth_user_id?: string | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          email?: string | null
           full_name: string
           id?: string
           schedule?: Json | null
           specialties?: string[] | null
         }
         Update: {
+          auth_user_id?: string | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          email?: string | null
           full_name?: string
           id?: string
           schedule?: Json | null
@@ -384,7 +390,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "barber"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -512,7 +518,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "barber"],
     },
   },
 } as const

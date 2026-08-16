@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as BarberRouteImport } from './routes/barber'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MembershipRouteImport } from './routes/membership'
 import { Route as ServicesRouteImport } from './routes/services'
@@ -22,6 +23,8 @@ import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminStaffRouteImport } from './routes/admin/staff'
 import { Route as AdminSubscriptionsRouteImport } from './routes/admin/subscriptions'
+import { Route as BarberAgendaRouteImport } from './routes/barber/agenda'
+import { Route as BarberClientesRouteImport } from './routes/barber/clientes'
 import { Route as ApiPublicAsaasWebhookRouteImport } from './routes/api/public/asaas-webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -32,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BarberRoute = BarberRouteImport.update({
+  id: '/barber',
+  path: '/barber',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -89,6 +97,16 @@ const AdminSubscriptionsRoute = AdminSubscriptionsRouteImport.update({
   path: '/subscriptions',
   getParentRoute: () => AdminRoute,
 } as any)
+const BarberAgendaRoute = BarberAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => BarberRoute,
+} as any)
+const BarberClientesRoute = BarberClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => BarberRoute,
+} as any)
 const ApiPublicAsaasWebhookRoute = ApiPublicAsaasWebhookRouteImport.update({
   id: '/api/public/asaas-webhook',
   path: '/api/public/asaas-webhook',
@@ -98,6 +116,7 @@ const ApiPublicAsaasWebhookRoute = ApiPublicAsaasWebhookRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/barber': typeof BarberRouteWithChildren
   '/login': typeof LoginRoute
   '/membership': typeof MembershipRoute
   '/services': typeof ServicesRoute
@@ -108,11 +127,14 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/subscriptions': typeof AdminSubscriptionsRoute
+  '/barber/agenda': typeof BarberAgendaRoute
+  '/barber/clientes': typeof BarberClientesRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/asaas-webhook': typeof ApiPublicAsaasWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/barber': typeof BarberRouteWithChildren
   '/login': typeof LoginRoute
   '/membership': typeof MembershipRoute
   '/services': typeof ServicesRoute
@@ -123,6 +145,8 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/subscriptions': typeof AdminSubscriptionsRoute
+  '/barber/agenda': typeof BarberAgendaRoute
+  '/barber/clientes': typeof BarberClientesRoute
   '/admin': typeof AdminIndexRoute
   '/api/public/asaas-webhook': typeof ApiPublicAsaasWebhookRoute
 }
@@ -130,6 +154,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/barber': typeof BarberRouteWithChildren
   '/login': typeof LoginRoute
   '/membership': typeof MembershipRoute
   '/services': typeof ServicesRoute
@@ -140,6 +165,8 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/subscriptions': typeof AdminSubscriptionsRoute
+  '/barber/agenda': typeof BarberAgendaRoute
+  '/barber/clientes': typeof BarberClientesRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/asaas-webhook': typeof ApiPublicAsaasWebhookRoute
 }
@@ -148,6 +175,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/barber'
     | '/login'
     | '/membership'
     | '/services'
@@ -158,11 +186,14 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/subscriptions'
+    | '/barber/agenda'
+    | '/barber/clientes'
     | '/admin/'
     | '/api/public/asaas-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/barber'
     | '/login'
     | '/membership'
     | '/services'
@@ -173,12 +204,15 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/subscriptions'
+    | '/barber/agenda'
+    | '/barber/clientes'
     | '/admin'
     | '/api/public/asaas-webhook'
   id:
     | '__root__'
     | '/'
     | '/admin'
+    | '/barber'
     | '/login'
     | '/membership'
     | '/services'
@@ -189,6 +223,8 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/subscriptions'
+    | '/barber/agenda'
+    | '/barber/clientes'
     | '/admin/'
     | '/api/public/asaas-webhook'
   fileRoutesById: FileRoutesById
@@ -196,6 +232,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  BarberRoute: typeof BarberRouteWithChildren
   LoginRoute: typeof LoginRoute
   MembershipRoute: typeof MembershipRoute
   ServicesRoute: typeof ServicesRoute
@@ -217,6 +254,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/barber': {
+      id: '/barber'
+      path: '/barber'
+      fullPath: '/barber'
+      preLoaderRoute: typeof BarberRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -296,6 +340,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSubscriptionsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/barber/agenda': {
+      id: '/barber/agenda'
+      path: '/agenda'
+      fullPath: '/barber/agenda'
+      preLoaderRoute: typeof BarberAgendaRouteImport
+      parentRoute: typeof BarberRoute
+    }
+    '/barber/clientes': {
+      id: '/barber/clientes'
+      path: '/clientes'
+      fullPath: '/barber/clientes'
+      preLoaderRoute: typeof BarberClientesRouteImport
+      parentRoute: typeof BarberRoute
+    }
     '/api/public/asaas-webhook': {
       id: '/api/public/asaas-webhook'
       path: '/api/public/asaas-webhook'
@@ -328,9 +386,23 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface BarberRouteChildren {
+  BarberAgendaRoute: typeof BarberAgendaRoute
+  BarberClientesRoute: typeof BarberClientesRoute
+}
+
+const BarberRouteChildren: BarberRouteChildren = {
+  BarberAgendaRoute: BarberAgendaRoute,
+  BarberClientesRoute: BarberClientesRoute,
+}
+
+const BarberRouteWithChildren =
+  BarberRoute._addFileChildren(BarberRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  BarberRoute: BarberRouteWithChildren,
   LoginRoute: LoginRoute,
   MembershipRoute: MembershipRoute,
   ServicesRoute: ServicesRoute,
