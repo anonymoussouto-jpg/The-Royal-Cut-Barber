@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Scissors, Calendar, Sparkles, Star, ArrowRight } from "lucide-react";
 import PublicLayout from "@/components/layout/PublicLayout";
 import { AIChatbot } from "@/components/ai/AIChatbot";
+import { useBooking } from "@/hooks/use-booking";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/")({
 
 
 function LandingPage() {
+  const booking = useBooking();
   return (
     <PublicLayout>
       <div className="flex flex-col w-full overflow-hidden">
@@ -44,7 +46,7 @@ function LandingPage() {
                 Mais que um corte, um ritual. Combinamos tradição clássica com tecnologia de ponta para o homem moderno.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Button size="lg" className="h-14 px-8 text-base bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-bold">
+                <Button onClick={() => booking.open()} size="lg" className="h-14 px-8 text-base bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-bold">
                   Agendar Horário
                   <Calendar className="ml-2 w-5 h-5" />
                 </Button>
@@ -116,7 +118,7 @@ function LandingPage() {
                     <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
                       {item.desc}
                     </p>
-                    <Button variant="link" className="p-0 text-primary font-bold group-hover:gap-2 transition-all">
+                    <Button onClick={() => booking.open()} variant="link" className="p-0 text-primary font-bold group-hover:gap-2 transition-all">
                       Ver detalhes <ArrowRight className="w-4 h-4" />
                     </Button>
                   </div>

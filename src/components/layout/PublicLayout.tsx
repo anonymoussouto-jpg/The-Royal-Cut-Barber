@@ -1,8 +1,10 @@
 import { createFileRoute, Outlet, Link } from "@tanstack/react-router";
 import { Scissors, ShoppingBag, Calendar, User, MessageSquare, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useBooking } from "@/hooks/use-booking";
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
+  const booking = useBooking();
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* Desktop Navigation */}
@@ -26,7 +28,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
                 <LayoutDashboard className="w-5 h-5" />
               </Button>
             </Link>
-            <Button className="hidden md:flex bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button onClick={() => booking.open()} className="hidden md:flex bg-primary text-primary-foreground hover:bg-primary/90">
               Agendar Agora
             </Button>
           </div>
@@ -49,7 +51,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
             <ShoppingBag className="w-5 h-5" />
             <span className="text-[10px]">Loja</span>
           </Link>
-          <Button size="sm" className="bg-primary text-primary-foreground -mt-8 shadow-lg shadow-primary/20 rounded-full w-12 h-12 p-0">
+          <Button onClick={() => booking.open()} size="sm" className="bg-primary text-primary-foreground -mt-8 shadow-lg shadow-primary/20 rounded-full w-12 h-12 p-0">
             <Calendar className="w-6 h-6" />
           </Button>
           <Link to="/membership" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-primary">

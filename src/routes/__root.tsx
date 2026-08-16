@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
+import { BookingModal } from "@/components/booking/BookingModal";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -46,6 +47,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <BookingModal />
       <Toaster position="top-center" richColors />
     </QueryClientProvider>
   );
