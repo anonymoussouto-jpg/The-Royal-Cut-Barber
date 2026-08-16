@@ -89,6 +89,7 @@ function AdminLayout() {
   const menuItems = [
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { label: "Serviços", href: "/admin/services", icon: Scissors },
+    { label: "Produtos", href: "/admin/products", icon: ShoppingBag },
     { label: "Relatórios", href: "/admin/reports", icon: TrendingUp },
     { label: "Pedidos Loja", href: "/admin/orders", icon: ShoppingBag },
     { label: "Assinaturas", href: "/admin/subscriptions", icon: Crown },
