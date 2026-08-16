@@ -135,19 +135,48 @@ export function BookingModal() {
   const handleBooking = async (paymentStatus: 'confirmed' | 'pending' = 'confirmed') => {
     setLoading(true);
     try {
-      // Simulate payment delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       const startTime = new Date(selectedDate!);
       const [hoursStr, minutesStr] = selectedTime!.split(':');
       startTime.setHours(parseInt(hoursStr || '0'), parseInt(minutesStr || '0'), 0, 0);
 
       const { data: { user } } = await supabase.auth.getUser();
+      let clientId = user?.id;
+
+      // If not logged in, search or create a guest profile
+      if (!clientId) {
+        // Search by phone
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('phone', clientPhone)
+          .maybeSingle();
+
+        if (existingProfile) {
+          clientId = existingProfile.id;
+        } else {
+          // Create new guest profile
+          const { data: newProfile, error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: crypto.randomUUID(),
+              full_name: clientName,
+              phone: clientPhone,
+              is_guest: true
+            })
+            .select('id')
+            .single();
+
+          if (profileError) throw profileError;
+          clientId = newProfile.id;
+        }
+      }
       
       const { error } = await supabase.from('appointments').insert({
         service_id: selectedService.id,
         barber_id: selectedBarber.id,
-        client_id: user?.id || '00000000-0000-0000-0000-000000000000',
+        client_id: clientId,
+        client_name: clientName,
+        client_phone: clientPhone,
         start_time: startTime.toISOString(),
         total_price: selectedService.price,
         status: paymentStatus === 'confirmed' ? 'confirmed' : 'pending'

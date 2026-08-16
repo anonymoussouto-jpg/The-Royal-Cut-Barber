@@ -18,6 +18,8 @@ export type Database = {
         Row: {
           barber_id: string
           client_id: string
+          client_name: string | null
+          client_phone: string | null
           created_at: string
           id: string
           service_id: string
@@ -28,6 +30,8 @@ export type Database = {
         Insert: {
           barber_id: string
           client_id: string
+          client_name?: string | null
+          client_phone?: string | null
           created_at?: string
           id?: string
           service_id: string
@@ -38,6 +42,8 @@ export type Database = {
         Update: {
           barber_id?: string
           client_id?: string
+          client_name?: string | null
+          client_phone?: string | null
           created_at?: string
           id?: string
           service_id?: string
@@ -166,6 +172,8 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          is_guest: boolean | null
+          phone: string | null
           updated_at: string
         }
         Insert: {
@@ -174,6 +182,8 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
+          is_guest?: boolean | null
+          phone?: string | null
           updated_at?: string
         }
         Update: {
@@ -182,6 +192,8 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_guest?: boolean | null
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []

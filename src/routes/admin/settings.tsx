@@ -26,10 +26,22 @@ function AdminSettings() {
       const { data, error } = await supabase.from('system_settings').select('key, value');
       if (error) throw error;
       
-      const settingsMap = data.reduce((acc, curr) => ({
-        ...acc,
-        [curr.key]: curr.value as string
-      }), {});
+      const settingsMap = data.reduce((acc, curr) => {
+        let parsedValue = curr.value;
+        try {
+          // If it's already an object, use it; if it's a JSON-encoded string, parse it
+          if (typeof curr.value === 'string') {
+            parsedValue = JSON.parse(curr.value);
+          }
+        } catch (e) {
+          parsedValue = curr.value;
+        }
+        
+        return {
+          ...acc,
+          [curr.key]: String(parsedValue)
+        };
+      }, {});
       
       setSettings(settingsMap);
     } catch (error) {
