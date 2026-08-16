@@ -5,6 +5,7 @@ import { Scissors, Calendar, Sparkles, Star, ArrowRight } from "lucide-react";
 import PublicLayout from "@/components/layout/PublicLayout";
 import { AIChatbot } from "@/components/ai/AIChatbot";
 import { useBooking } from "@/hooks/use-booking";
+import { useChatbot } from "@/hooks/use-chatbot";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   const booking = useBooking();
+  const chatbot = useChatbot();
   return (
     <PublicLayout>
       <div className="flex flex-col w-full overflow-hidden">
@@ -50,7 +52,7 @@ function LandingPage() {
                   Agendar Horário
                   <Calendar className="ml-2 w-5 h-5" />
                 </Button>
-                <Button size="lg" variant="outline" className="h-14 px-8 text-base border-white/20 text-white hover:bg-white/10 rounded-full backdrop-blur-sm">
+                <Button onClick={() => chatbot.open()} size="lg" variant="outline" className="h-14 px-8 text-base border-white/20 text-white hover:bg-white/10 rounded-full backdrop-blur-sm">
                   Falar com nossa IA
                   <Sparkles className="ml-2 w-5 h-5" />
                 </Button>

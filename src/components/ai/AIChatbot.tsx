@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { useServerFn } from "@tanstack/react-start";
 import { chatWithAI } from "@/lib/ai.functions";
 import { toast } from "sonner";
+import { useChatbot } from "@/hooks/use-chatbot";
 
 export function AIChatbot() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, open, close } = useChatbot();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<{ role: "assistant" | "user" | "system"; content: string }[]>([
     { role: "assistant", content: "Olá, seja bem-vindo à The Royal Cut, a barbearia do Thiago. Como posso servir você hoje?" }
@@ -63,7 +64,7 @@ export function AIChatbot() {
     <>
       {/* Trigger Button */}
       <Button
-        onClick={() => setIsOpen(true)}
+        onClick={() => open()}
         className={`fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 p-0 shadow-2xl transition-all duration-300 ${isOpen ? 'scale-0' : 'scale-100'} bg-primary hover:bg-primary/90 text-primary-foreground`}
       >
         <MessageSquare className="w-6 h-6" />
@@ -94,7 +95,7 @@ export function AIChatbot() {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                onClick={() => setIsOpen(false)}
+                onClick={() => close()}
                 className="text-white hover:bg-white/10"
               >
                 <X className="w-5 h-5" />

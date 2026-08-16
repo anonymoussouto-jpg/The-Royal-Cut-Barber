@@ -38,6 +38,7 @@ export function BookingModal() {
   const [services, setServices] = useState<any[]>([]);
   const [barbers, setBarbers] = useState<any[]>([]);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [pixKey, setPixKey] = useState<string>("00020126360014BR.GOV.BCB.PIX0114+5511999999999520400005303986540510.005802BR5913THE ROYAL CUT6009SAO PAULO62070503***6304E2B1");
 
   // Selection state
   const [selectedService, setSelectedService] = useState<any>(null);
@@ -51,6 +52,7 @@ export function BookingModal() {
     if (isOpen) {
       fetchServices();
       fetchBarbers();
+      fetchPixKey();
       setStep('service');
       // Reset if not starting from a specific service
       if (!initialServiceId) {
@@ -83,6 +85,15 @@ export function BookingModal() {
   async function fetchBarbers() {
     const { data } = await supabase.from('barbers').select('*');
     if (data) setBarbers(data);
+  }
+
+  async function fetchPixKey() {
+    const { data } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'pix_key')
+      .single();
+    if (data?.value) setPixKey(data.value);
   }
 
   async function fetchBookedSlots() {
@@ -142,7 +153,7 @@ export function BookingModal() {
   };
 
   const copyPix = () => {
-    navigator.clipboard.writeText("00020126360014BR.GOV.BCB.PIX0114+5511999999999520400005303986540510.005802BR5913THE ROYAL CUT6009SAO PAULO62070503***6304E2B1");
+    navigator.clipboard.writeText(pixKey);
     toast.success('Código PIX copiado!');
   };
 
@@ -398,7 +409,7 @@ export function BookingModal() {
                 </div>
 
                 <div className="bg-white p-4 rounded-3xl w-48 h-48 mx-auto mb-8">
-                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TheRoyalCutPIX" className="w-full h-full" alt="QR PIX" />
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(pixKey)}`} className="w-full h-full" alt="QR PIX" />
                 </div>
 
                 <div className="space-y-4">
