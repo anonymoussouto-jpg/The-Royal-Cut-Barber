@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit2, User, Loader2, Key, ShieldCheck, Mail } from "lucide-react";
+import { Plus, Trash2, Edit2, User, Loader2, Key, ShieldCheck, Mail, ImageIcon, Scissors } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { createBarberUser } from "@/lib/barbers.functions";
 import {
@@ -18,6 +18,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { BeforeAfterSlider } from "@/components/ui/before-after-slider";
 
 export const Route = createFileRoute("/admin/staff")({
   component: StaffManagement,
@@ -31,6 +32,7 @@ interface Barber {
   specialties: string[] | null;
   auth_user_id?: string | null;
   email?: string | null;
+  transformations_count?: number;
 }
 
 function StaffManagement() {
@@ -38,6 +40,11 @@ function StaffManagement() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBarber, setEditingBarber] = useState<Barber | null>(null);
+  
+  const [viewingTransformations, setViewingTransformations] = useState<string | null>(null);
+  const [barberTransformations, setBarberTransformations] = useState<any[]>([]);
+  const [loadingTransformations, setLoadingTransformations] = useState(false);
+
   const [formData, setFormData] = useState({
     full_name: "",
     bio: "",
@@ -55,9 +62,18 @@ function StaffManagement() {
 
   const fetchBarbers = async () => {
     try {
-      const { data, error } = await supabase.from("barbers").select("*");
+      const { data, error } = await supabase.from("barbers").select(`
+        *,
+        transformations:transformations(count)
+      `);
       if (error) throw error;
-      setBarbers(data || []);
+      
+      const formatted = data.map((b: any) => ({
+        ...b,
+        transformations_count: b.transformations?.[0]?.count || 0
+      }));
+
+      setBarbers(formatted || []);
     } catch (error) {
       console.error("Error fetching barbers:", error);
       toast.error("Erro ao carregar barbeiros");
@@ -143,6 +159,23 @@ function StaffManagement() {
       password: "",
     });
     setIsDialogOpen(true);
+  };
+
+  const openTransformations = async (barberId: string) => {
+    setViewingTransformations(barberId);
+    setLoadingTransformations(true);
+    try {
+      const { data } = await supabase
+        .from("transformations")
+        .select("*")
+        .eq("barber_id", barberId)
+        .order("created_at", { ascending: false });
+      setBarberTransformations(data || []);
+    } catch (error) {
+      toast.error("Erro ao carregar transformações");
+    } finally {
+      setLoadingTransformations(false);
+    }
   };
 
   if (loading) {
@@ -307,9 +340,59 @@ function StaffManagement() {
                 </Badge>
               )}
             </div>
+
+            <div className="mt-4 pt-4 border-t border-white/5">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => openTransformations(barber.id)}
+                className="w-full justify-start text-[10px] font-black uppercase tracking-widest text-primary/60 hover:text-primary hover:bg-primary/5 p-0 h-auto"
+              >
+                <ImageIcon className="w-3 h-3 mr-2" />
+                Ver Transformações ({barber.transformations_count})
+              </Button>
+            </div>
           </div>
         ))}
       </div>
+
+      {/* Transformations Modal */}
+      <Dialog open={!!viewingTransformations} onOpenChange={(open) => !open && setViewingTransformations(null)}>
+        <DialogContent className="bg-zinc-950 border-white/10 max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-serif">Galeria de Transformações</DialogTitle>
+          </DialogHeader>
+          
+          {loadingTransformations ? (
+            <div className="py-20 flex justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : barberTransformations.length === 0 ? (
+            <div className="py-20 text-center text-white/20 uppercase tracking-widest font-bold text-sm">
+              Nenhuma transformação cadastrada
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+              {barberTransformations.map((t) => (
+                <div key={t.id} className="space-y-3">
+                  <BeforeAfterSlider 
+                    beforeImage={t.before_image_url}
+                    afterImage={t.after_image_url}
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest bg-primary/10 px-2 py-1 rounded">
+                      {t.style_tag || "Geral"}
+                    </span>
+                    {t.is_highlighted && (
+                      <Badge className="bg-yellow-500 text-black text-[9px] font-black uppercase">Destaque</Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

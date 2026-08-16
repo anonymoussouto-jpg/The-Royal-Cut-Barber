@@ -1,22 +1,24 @@
 import { useState, useEffect, useRef } from "react";
+import { QrCode, CreditCard, Wallet, MessageSquare, X, Send, Sparkles, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, X, Send, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useServerFn } from "@tanstack/react-start";
 import { chatWithAI } from "@/lib/ai.functions";
 import { toast } from "sonner";
 import { useChatbot } from "@/hooks/use-chatbot";
+import { useNavigate } from "@tanstack/react-router";
 
 export function AIChatbot() {
   const { isOpen, open, close } = useChatbot();
   const [showBubble, setShowBubble] = useState(true);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<{ role: "assistant" | "user" | "system"; content: string }[]>([
+  const [messages, setMessages] = useState<{ role: "assistant" | "user" | "system"; content: string; metadata?: any }[]>([
     { role: "assistant", content: "Olá, seja bem-vindo à The Royal Cut, a barbearia do Thiago. Como posso servir você hoje?" }
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,7 +54,8 @@ export function AIChatbot() {
 
       setMessages(prev => [...prev, { 
         role: "assistant" as const, 
-        content: response.content || "Desculpe, não consegui processar sua solicitação."
+        content: response.content || "Desculpe, não consegui processar sua solicitação.",
+        metadata: response.metadata
       }]);
     } catch (error) {
       console.error("AI Error:", error);
@@ -108,7 +111,7 @@ export function AIChatbot() {
             initial={{ opacity: 0, y: 100, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.9 }}
-            className="fixed bottom-6 right-6 z-[60] w-[380px] h-[550px] bg-card border border-border/40 shadow-2xl rounded-3xl flex flex-col overflow-hidden"
+            className="fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-[60] w-full sm:w-[380px] h-[75vh] sm:h-[550px] bg-card border border-border/40 shadow-2xl rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="p-6 bg-primary text-primary-foreground flex items-center justify-between">
@@ -149,6 +152,22 @@ export function AIChatbot() {
                     }`}
                   >
                     {msg.content}
+                    
+                    {msg.metadata?.appointment_details && (
+                      <div className="mt-4 p-4 bg-black/40 rounded-xl border border-primary/20 space-y-3">
+                        <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest">
+                          <Sparkles className="w-3 h-3" />
+                          Resumo do Agendamento
+                        </div>
+                        <div className="text-[10px] space-y-1 text-white/70">
+                          <p>Código: <span className="text-white font-mono">#{msg.metadata.appointment_details.id.split('-')[0].toUpperCase()}</span></p>
+                          <p>Valor: <span className="text-primary font-bold">R$ {msg.metadata.appointment_details.price}</span></p>
+                        </div>
+                        <Button className="w-full bg-primary text-black font-bold h-8 text-[10px] rounded-lg">
+                          Pagar via PIX
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

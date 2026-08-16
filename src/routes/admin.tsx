@@ -10,11 +10,15 @@ import {
   ChevronRight,
   ShoppingBag,
   User,
-  Crown
+  Crown,
+  TrendingUp,
+  Menu,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ location }) => {
@@ -46,6 +50,11 @@ function AdminLayout() {
   const router = useRouterState();
   const currentPath = router.location.pathname;
   const [adminProfile, setAdminProfile] = useState<{ full_name: string | null; avatar_url: string | null } | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [currentPath]);
 
   useEffect(() => {
     const fetchAdminProfile = async () => {
@@ -79,6 +88,7 @@ function AdminLayout() {
 
   const menuItems = [
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { label: "Relatórios", href: "/admin/reports", icon: TrendingUp },
     { label: "Pedidos Loja", href: "/admin/orders", icon: ShoppingBag },
     { label: "Assinaturas", href: "/admin/subscriptions", icon: Crown },
     { label: "Agenda", href: "/admin/calendar", icon: Calendar },
@@ -93,9 +103,9 @@ function AdminLayout() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#0A0A0A] text-white">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-white/10 flex flex-col bg-[#050505]">
+    <div className="flex min-h-screen bg-[#0A0A0A] text-white flex-col lg:flex-row">
+      {/* Sidebar Desktop */}
+      <aside className="hidden lg:flex w-64 border-r border-white/10 flex-col bg-[#050505] shrink-0">
         <div className="p-8">
           <Link to="/" className="flex items-center gap-2 text-xl font-serif font-bold text-primary">
             <Scissors className="w-6 h-6" />
@@ -138,6 +148,62 @@ function AdminLayout() {
           </Button>
         </div>
       </aside>
+
+      {/* Mobile Top Nav & Sidebar Drawer */}
+      <div className="lg:hidden flex items-center justify-between p-4 border-b border-white/10 bg-[#050505]">
+        <Link to="/" className="flex items-center gap-2 text-lg font-serif font-bold text-primary">
+          <Scissors className="w-5 h-5" />
+          <span>THE ROYAL CUT</span>
+        </Link>
+        
+        <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <Menu className="w-6 h-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="bg-[#050505] border-white/10 p-0 w-72">
+            <SheetHeader className="p-8 text-left border-b border-white/10">
+              <SheetTitle className="flex items-center gap-2 text-xl font-serif font-bold text-primary">
+                <Scissors className="w-6 h-6" />
+                <span>THE ROYAL CUT</span>
+              </SheetTitle>
+              <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] mt-2 font-bold">Admin Panel</p>
+            </SheetHeader>
+            <nav className="p-4 space-y-2 flex-grow overflow-y-auto">
+              {menuItems.map((item) => {
+                const isActive = currentPath === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+                      isActive 
+                        ? "bg-primary/10 text-primary border-l-4 border-primary" 
+                        : "text-white/50 hover:bg-white/5 hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className="w-5 h-5" />
+                      <span className="text-sm font-medium">{item.label}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </nav>
+            <div className="p-6 border-t border-white/10">
+              <Button 
+                variant="ghost" 
+                onClick={handleLogout}
+                className="w-full justify-start text-white/50 hover:text-red-400 hover:bg-red-400/10 gap-3"
+              >
+                <LogOut className="w-5 h-5" />
+                <span>Logout</span>
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
 
       {/* Main Content */}
       <main className="flex-grow overflow-y-auto">

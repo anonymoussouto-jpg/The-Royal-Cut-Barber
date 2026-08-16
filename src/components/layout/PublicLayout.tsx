@@ -46,10 +46,10 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2 text-xl font-serif font-bold tracking-tighter text-primary">
             <Scissors className="w-6 h-6" />
-            <span>THE ROYAL CUT</span>
+            <span className="hidden sm:inline">THE ROYAL CUT</span>
           </Link>
           
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden lg:flex items-center gap-8">
             <Link to="/" className={`text-sm font-medium transition-colors relative py-1 ${isLinkActive('/') ? 'text-primary' : 'hover:text-primary'}`}>
               Início
               {isLinkActive('/') && <motion.div layoutId="activeNav" className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary" />}
@@ -68,19 +68,35 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
+          {/* Tablet Icons Navigation */}
+          <div className="hidden md:flex lg:hidden items-center gap-6">
+            <Link to="/" title="Início" className={`${isLinkActive('/') ? 'text-primary' : 'text-white/50 hover:text-white'}`}>
+              <Scissors className="w-5 h-5" />
+            </Link>
+            <Link to="/services" title="Serviços" className={`${isLinkActive('/services') ? 'text-primary' : 'text-white/50 hover:text-white'}`}>
+              <Calendar className="w-5 h-5" />
+            </Link>
+            <Link to="/shop" title="Loja" className={`${isLinkActive('/shop') ? 'text-primary' : 'text-white/50 hover:text-white'}`}>
+              <ShoppingBag className="w-5 h-5" />
+            </Link>
+            <Link to="/membership" title="Clube" className={`${isLinkActive('/membership') ? 'text-primary' : 'text-white/50 hover:text-white'}`}>
+              <Crown className="w-5 h-5" />
+            </Link>
+          </div>
+
           <div className="flex items-center gap-4">
             {hasSubscription && (
-              <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider animate-pulse">
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider animate-pulse">
                 <Crown className="w-3 h-3" />
-                Membro Royal
+                <span className="hidden lg:inline">Membro Royal</span>
               </div>
             )}
-             <Link to="/admin">
-              <Button variant="ghost" size="icon" className="hidden md:flex">
+             <Link to="/admin" className="hidden sm:block">
+              <Button variant="ghost" size="icon">
                 <LayoutDashboard className="w-5 h-5" />
               </Button>
             </Link>
-            <Button onClick={() => booking.open()} className="hidden md:flex bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button onClick={() => booking.open()} className="hidden sm:flex bg-primary text-primary-foreground hover:bg-primary/90">
               Agendar Agora
             </Button>
           </div>
@@ -124,26 +140,30 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
       </footer>
 
       {/* Mobile Sticky Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-t border-border/40 px-6 py-3">
-        <div className="flex items-center justify-between max-w-md mx-auto">
-          <Link to="/" className={`flex flex-col items-center gap-1 transition-colors ${isLinkActive('/') ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border/40 px-4 py-2">
+        <div className="flex items-center justify-between max-w-md mx-auto h-14">
+          <Link to="/" className={`flex flex-col items-center justify-center gap-1 w-full min-w-[44px] min-h-[44px] transition-colors ${isLinkActive('/') ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}>
             <Scissors className="w-5 h-5" />
-            <span className="text-[10px]">Início</span>
+            <span className="text-[9px] font-bold uppercase">Início</span>
           </Link>
-          <Link to="/shop" className={`flex flex-col items-center gap-1 transition-colors ${isLinkActive('/shop') ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}>
+          <Link to="/shop" className={`flex flex-col items-center justify-center gap-1 w-full min-w-[44px] min-h-[44px] transition-colors ${isLinkActive('/shop') ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}>
             <ShoppingBag className="w-5 h-5" />
-            <span className="text-[10px]">Loja</span>
+            <span className="text-[9px] font-bold uppercase">Loja</span>
           </Link>
-          <Button onClick={() => booking.open()} size="sm" className="bg-primary text-primary-foreground -mt-8 shadow-lg shadow-primary/20 rounded-full w-12 h-12 p-0">
-            <Calendar className="w-6 h-6" />
-          </Button>
-          <Link to="/membership" className={`flex flex-col items-center gap-1 transition-colors ${isLinkActive('/membership') ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}>
+          
+          <div className="flex items-center justify-center w-full px-2">
+            <Button onClick={() => booking.open()} size="sm" className="bg-primary text-primary-foreground -mt-8 shadow-2xl shadow-primary/40 rounded-full w-14 h-14 p-0 border-4 border-background ring-4 ring-primary/10">
+              <Calendar className="w-6 h-6" />
+            </Button>
+          </div>
+
+          <Link to="/membership" className={`flex flex-col items-center justify-center gap-1 w-full min-w-[44px] min-h-[44px] transition-colors ${isLinkActive('/membership') ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}>
             <User className="w-5 h-5" />
-            <span className="text-[10px]">Clube</span>
+            <span className="text-[9px] font-bold uppercase">Clube</span>
           </Link>
-          <button onClick={() => chatbot.open()} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-primary">
+          <button onClick={() => chatbot.open()} className="flex flex-col items-center justify-center gap-1 w-full min-w-[44px] min-h-[44px] text-muted-foreground hover:text-primary">
             <MessageSquare className="w-5 h-5" />
-            <span className="text-[10px]">IA</span>
+            <span className="text-[9px] font-bold uppercase">IA</span>
           </button>
         </div>
       </div>

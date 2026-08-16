@@ -45,6 +45,8 @@ export function BookingModal() {
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [asaasData, setAsaasData] = useState<any>(null);
   const [lastAppointmentId, setLastAppointmentId] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(900); // 15 minutes in seconds
+  const [isExpired, setIsExpired] = useState(false);
 
   const startPaymentFn = useServerFn(createAsaasPayment);
 
@@ -134,6 +136,22 @@ export function BookingModal() {
   ];
 
   useEffect(() => {
+    let timer: any;
+    if ((step === 'payment_pix' || step === 'payment_card') && timeLeft > 0 && !isExpired) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            setIsExpired(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [step, timeLeft, isExpired]);
+
+  useEffect(() => {
     if (!lastAppointmentId) return;
 
     const channel = supabase
@@ -159,6 +177,18 @@ export function BookingModal() {
       supabase.removeChannel(channel);
     };
   }, [lastAppointmentId]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleRegeneratePix = () => {
+    setTimeLeft(900);
+    setIsExpired(false);
+    handleBooking('PIX');
+  };
 
   const handleBooking = async (paymentMethod: 'PIX' | 'CREDIT_CARD' | 'IN_PERSON') => {
     setLoading(true);
@@ -268,10 +298,26 @@ export function BookingModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="sm:max-w-[500px] bg-[#0A0A0A] border-white/10 text-white overflow-hidden p-0">
+      <DialogContent className="sm:max-w-[500px] w-full h-full sm:h-auto sm:max-h-[90vh] bg-[#0A0A0A] border-white/10 text-white overflow-hidden p-0 flex flex-col">
         {/* Stepper */}
-        <div className="px-6 py-4 bg-white/5 border-b border-white/10 overflow-x-auto no-scrollbar">
-          <div className="flex items-center justify-between min-w-[400px]">
+        <div className="px-6 py-4 bg-white/5 border-b border-white/10 overflow-x-auto no-scrollbar shrink-0">
+          {/* Mobile Stepper Simple */}
+          <div className="sm:hidden flex items-center justify-between">
+            <span className="text-xs font-bold text-primary uppercase tracking-widest">
+              Etapa {currentStepIndex + 1}/6
+            </span>
+            <span className="text-[10px] text-white/40 uppercase font-bold">
+              {steps[currentStepIndex]?.label}
+            </span>
+            <div className="w-20 h-1 bg-white/10 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-300" 
+                style={{ width: `${((currentStepIndex + 1) / 6) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="hidden sm:flex items-center justify-between min-w-[400px]">
             {steps.map((s, idx) => {
               const Icon = s.icon;
               const isCompleted = idx < currentStepIndex || step === 'success';
@@ -298,7 +344,7 @@ export function BookingModal() {
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 flex-grow overflow-y-auto custom-scrollbar">
           <AnimatePresence mode="wait">
             {step === 'service' && (
               <motion.div
@@ -431,21 +477,36 @@ export function BookingModal() {
                     <div className="grid grid-cols-4 gap-2">
                       {timeSlots.map((time) => {
                         const isBooked = bookedSlots.includes(time);
+                        const availableSlots = timeSlots.length - bookedSlots.length;
+                        const isUrgent = !isBooked && availableSlots <= 2;
+
                         return (
-                          <button
-                            key={time}
-                            disabled={isBooked}
-                            onClick={() => setSelectedTime(time)}
-                            className={`py-2 rounded-lg text-xs font-bold transition-all ${
-                              selectedTime === time
-                                ? 'bg-primary text-primary-foreground'
-                                : isBooked
-                                ? 'bg-white/5 text-white/20 cursor-not-allowed line-through'
-                                : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-                            }`}
-                          >
-                            {time}
-                          </button>
+                          <div key={time} className="relative">
+                            <button
+                              disabled={isBooked}
+                              onClick={() => setSelectedTime(time)}
+                              className={`w-full py-2 rounded-lg text-xs font-bold transition-all ${
+                                selectedTime === time
+                                  ? 'bg-primary text-primary-foreground'
+                                  : isBooked
+                                  ? 'bg-white/5 text-white/20 cursor-not-allowed line-through'
+                                  : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                              }`}
+                            >
+                              {time}
+                            </button>
+                            {isUrgent && (
+                              <div className="absolute -top-2 -right-1 z-10">
+                                <motion.span
+                                  animate={{ scale: [1, 1.1, 1] }}
+                                  transition={{ repeat: Infinity, duration: 1.5 }}
+                                  className="bg-red-500 text-white text-[7px] font-black uppercase px-1 rounded flex items-center gap-0.5 shadow-lg shadow-red-500/20"
+                                >
+                                  🔥 ÚLTIMAS!
+                                </motion.span>
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -615,19 +676,42 @@ export function BookingModal() {
                   )}
                 </div>
 
-                <div className="space-y-3 px-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={copyPix}
-                    className="w-full border-white/10 bg-white/5 h-12 rounded-xl text-white hover:bg-white/10"
-                  >
-                    <Copy className="w-4 h-4 mr-2" /> Copiar Código Copia e Cola
-                  </Button>
-                  
-                  <div className="flex items-center justify-center gap-2 pt-6">
-                    <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                    <span className="text-[10px] text-white/20 uppercase tracking-widest font-bold">Aguardando confirmação em tempo real...</span>
+                <div className="space-y-4 px-4">
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                    {isExpired ? (
+                      <div className="space-y-3">
+                        <p className="text-red-400 text-xs font-bold uppercase tracking-widest">Código expirado — gere um novo PIX</p>
+                        <Button 
+                          onClick={handleRegeneratePix}
+                          className="w-full bg-primary text-black font-bold h-10 rounded-xl"
+                        >
+                          Gerar Novo PIX
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Expira em</p>
+                        <p className="text-2xl font-mono font-bold text-primary">⏱️ {formatTime(timeLeft)}</p>
+                      </div>
+                    )}
                   </div>
+
+                  {!isExpired && (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        onClick={copyPix}
+                        className="w-full border-white/10 bg-white/5 h-12 rounded-xl text-white hover:bg-white/10"
+                      >
+                        <Copy className="w-4 h-4 mr-2" /> Copiar Código Copia e Cola
+                      </Button>
+                      
+                      <div className="flex items-center justify-center gap-2 pt-2">
+                        <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                        <span className="text-[10px] text-white/20 uppercase tracking-widest font-bold">Aguardando confirmação em tempo real...</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </motion.div>
             )}

@@ -265,6 +265,7 @@ export type Database = {
       }
       services: {
         Row: {
+          barber_percentage: number | null
           category: string | null
           created_at: string
           description: string | null
@@ -272,9 +273,11 @@ export type Database = {
           id: string
           image_url: string | null
           name: string
+          owner_percentage: number | null
           price: number
         }
         Insert: {
+          barber_percentage?: number | null
           category?: string | null
           created_at?: string
           description?: string | null
@@ -282,9 +285,11 @@ export type Database = {
           id?: string
           image_url?: string | null
           name: string
+          owner_percentage?: number | null
           price: number
         }
         Update: {
+          barber_percentage?: number | null
           category?: string | null
           created_at?: string
           description?: string | null
@@ -292,6 +297,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           name?: string
+          owner_percentage?: number | null
           price?: number
         }
         Relationships: []
@@ -357,6 +363,44 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      transformations: {
+        Row: {
+          after_image_url: string
+          barber_id: string
+          before_image_url: string
+          created_at: string
+          id: string
+          is_highlighted: boolean | null
+          style_tag: string | null
+        }
+        Insert: {
+          after_image_url: string
+          barber_id: string
+          before_image_url: string
+          created_at?: string
+          id?: string
+          is_highlighted?: boolean | null
+          style_tag?: string | null
+        }
+        Update: {
+          after_image_url?: string
+          barber_id?: string
+          before_image_url?: string
+          created_at?: string
+          id?: string
+          is_highlighted?: boolean | null
+          style_tag?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transformations_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

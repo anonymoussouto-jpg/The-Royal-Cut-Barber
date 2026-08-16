@@ -20,11 +20,14 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminCalendarRouteImport } from './routes/admin/calendar'
 import { Route as AdminCrmRouteImport } from './routes/admin/crm'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
+import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminStaffRouteImport } from './routes/admin/staff'
 import { Route as AdminSubscriptionsRouteImport } from './routes/admin/subscriptions'
 import { Route as BarberAgendaRouteImport } from './routes/barber/agenda'
 import { Route as BarberClientesRouteImport } from './routes/barber/clientes'
+import { Route as BarberFotosRouteImport } from './routes/barber/fotos'
+import { Route as BarberPerfilRouteImport } from './routes/barber/perfil'
 import { Route as ApiPublicAsaasWebhookRouteImport } from './routes/api/public/asaas-webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -82,6 +85,11 @@ const AdminOrdersRoute = AdminOrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -107,6 +115,16 @@ const BarberClientesRoute = BarberClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => BarberRoute,
 } as any)
+const BarberFotosRoute = BarberFotosRouteImport.update({
+  id: '/fotos',
+  path: '/fotos',
+  getParentRoute: () => BarberRoute,
+} as any)
+const BarberPerfilRoute = BarberPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => BarberRoute,
+} as any)
 const ApiPublicAsaasWebhookRoute = ApiPublicAsaasWebhookRouteImport.update({
   id: '/api/public/asaas-webhook',
   path: '/api/public/asaas-webhook',
@@ -124,11 +142,14 @@ export interface FileRoutesByFullPath {
   '/admin/calendar': typeof AdminCalendarRoute
   '/admin/crm': typeof AdminCrmRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/barber/agenda': typeof BarberAgendaRoute
   '/barber/clientes': typeof BarberClientesRoute
+  '/barber/fotos': typeof BarberFotosRoute
+  '/barber/perfil': typeof BarberPerfilRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/asaas-webhook': typeof ApiPublicAsaasWebhookRoute
 }
@@ -142,11 +163,14 @@ export interface FileRoutesByTo {
   '/admin/calendar': typeof AdminCalendarRoute
   '/admin/crm': typeof AdminCrmRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/barber/agenda': typeof BarberAgendaRoute
   '/barber/clientes': typeof BarberClientesRoute
+  '/barber/fotos': typeof BarberFotosRoute
+  '/barber/perfil': typeof BarberPerfilRoute
   '/admin': typeof AdminIndexRoute
   '/api/public/asaas-webhook': typeof ApiPublicAsaasWebhookRoute
 }
@@ -162,11 +186,14 @@ export interface FileRoutesById {
   '/admin/calendar': typeof AdminCalendarRoute
   '/admin/crm': typeof AdminCrmRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/barber/agenda': typeof BarberAgendaRoute
   '/barber/clientes': typeof BarberClientesRoute
+  '/barber/fotos': typeof BarberFotosRoute
+  '/barber/perfil': typeof BarberPerfilRoute
   '/admin/': typeof AdminIndexRoute
   '/api/public/asaas-webhook': typeof ApiPublicAsaasWebhookRoute
 }
@@ -183,11 +210,14 @@ export interface FileRouteTypes {
     | '/admin/calendar'
     | '/admin/crm'
     | '/admin/orders'
+    | '/admin/reports'
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/subscriptions'
     | '/barber/agenda'
     | '/barber/clientes'
+    | '/barber/fotos'
+    | '/barber/perfil'
     | '/admin/'
     | '/api/public/asaas-webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -201,11 +231,14 @@ export interface FileRouteTypes {
     | '/admin/calendar'
     | '/admin/crm'
     | '/admin/orders'
+    | '/admin/reports'
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/subscriptions'
     | '/barber/agenda'
     | '/barber/clientes'
+    | '/barber/fotos'
+    | '/barber/perfil'
     | '/admin'
     | '/api/public/asaas-webhook'
   id:
@@ -220,11 +253,14 @@ export interface FileRouteTypes {
     | '/admin/calendar'
     | '/admin/crm'
     | '/admin/orders'
+    | '/admin/reports'
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/subscriptions'
     | '/barber/agenda'
     | '/barber/clientes'
+    | '/barber/fotos'
+    | '/barber/perfil'
     | '/admin/'
     | '/api/public/asaas-webhook'
   fileRoutesById: FileRoutesById
@@ -319,6 +355,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOrdersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -354,6 +397,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BarberClientesRouteImport
       parentRoute: typeof BarberRoute
     }
+    '/barber/fotos': {
+      id: '/barber/fotos'
+      path: '/fotos'
+      fullPath: '/barber/fotos'
+      preLoaderRoute: typeof BarberFotosRouteImport
+      parentRoute: typeof BarberRoute
+    }
+    '/barber/perfil': {
+      id: '/barber/perfil'
+      path: '/perfil'
+      fullPath: '/barber/perfil'
+      preLoaderRoute: typeof BarberPerfilRouteImport
+      parentRoute: typeof BarberRoute
+    }
     '/api/public/asaas-webhook': {
       id: '/api/public/asaas-webhook'
       path: '/api/public/asaas-webhook'
@@ -368,6 +425,7 @@ interface AdminRouteChildren {
   AdminCalendarRoute: typeof AdminCalendarRoute
   AdminCrmRoute: typeof AdminCrmRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
+  AdminReportsRoute: typeof AdminReportsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminStaffRoute: typeof AdminStaffRoute
   AdminSubscriptionsRoute: typeof AdminSubscriptionsRoute
@@ -378,6 +436,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCalendarRoute: AdminCalendarRoute,
   AdminCrmRoute: AdminCrmRoute,
   AdminOrdersRoute: AdminOrdersRoute,
+  AdminReportsRoute: AdminReportsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminStaffRoute: AdminStaffRoute,
   AdminSubscriptionsRoute: AdminSubscriptionsRoute,
@@ -389,11 +448,15 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface BarberRouteChildren {
   BarberAgendaRoute: typeof BarberAgendaRoute
   BarberClientesRoute: typeof BarberClientesRoute
+  BarberFotosRoute: typeof BarberFotosRoute
+  BarberPerfilRoute: typeof BarberPerfilRoute
 }
 
 const BarberRouteChildren: BarberRouteChildren = {
   BarberAgendaRoute: BarberAgendaRoute,
   BarberClientesRoute: BarberClientesRoute,
+  BarberFotosRoute: BarberFotosRoute,
+  BarberPerfilRoute: BarberPerfilRoute,
 }
 
 const BarberRouteWithChildren =

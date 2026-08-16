@@ -1,14 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Scissors, Calendar, Sparkles, Star, ArrowRight, Quote, Anchor } from "lucide-react";
+import { Scissors, Calendar, Sparkles, Star, ArrowRight, Quote, Anchor, Users as UsersIcon, CheckCircle2 } from "lucide-react";
 import PublicLayout from "@/components/layout/PublicLayout";
 import { AIChatbot } from "@/components/ai/AIChatbot";
 import { useBooking } from "@/hooks/use-booking";
 import { useChatbot } from "@/hooks/use-chatbot";
 import { BeforeAfterSlider } from "@/components/ui/before-after-slider";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -19,22 +22,146 @@ function LandingPage() {
   const booking = useBooking();
   const chatbot = useChatbot();
   const [barbers, setBarbers] = useState<any[]>([]);
+  const [bestBarber, setBestBarber] = useState<any>(null);
+  const [highlights, setHighlights] = useState<any[]>([]);
+  const [onlineVisitors, setOnlineVisitors] = useState(12);
+  const [todayAppointments, setTodayAppointments] = useState(0);
+
+  // Social Proof Notification State
+  const [lastNotification, setLastNotification] = useState<any>(null);
+
+  const fetchTodayAppointments = useCallback(async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const { count } = await supabase
+      .from('appointments')
+      .select('*', { count: 'exact', head: true })
+      .gte('start_time', today.toISOString())
+      .lt('start_time', tomorrow.toISOString());
+
+    setTodayAppointments(count || 0);
+  }, []);
+
+  const fetchRandomSocialNotification = useCallback(async () => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const { data: appointments } = await supabase
+      .from('appointments')
+      .select('client_name, services(name)')
+      .gte('created_at', sevenDaysAgo.toISOString())
+      .limit(20);
+
+    if (appointments && appointments.length > 0) {
+      const randomIndex = Math.floor(Math.random() * appointments.length);
+      const randomApp = appointments[randomIndex];
+      
+      if (!randomApp || !randomApp.client_name) return;
+
+      const firstName = randomApp.client_name.split(' ')[0];
+      const serviceName = (randomApp as any).services?.name || "um serviço Royal";
+      
+      toast(
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+            <CheckCircle2 className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-white">
+              {firstName} acabou de agendar um {serviceName}
+            </span>
+            <span className="text-[10px] text-white/40 uppercase tracking-tighter">Há poucos minutos</span>
+          </div>
+        </div>,
+        {
+          position: 'bottom-left',
+          duration: 5000,
+          className: "bg-zinc-950 border-white/10"
+        }
+      );
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchBarbers() {
-      const { data } = await supabase.from('barbers').select('*');
-      if (data && data.length > 0) {
-        setBarbers(data);
+    const visitorInterval = setInterval(() => {
+      setOnlineVisitors(Math.floor(Math.random() * (24 - 8 + 1)) + 8);
+    }, 30000);
+
+    const appointmentInterval = setInterval(fetchTodayAppointments, 60000);
+    fetchTodayAppointments();
+
+    const socialInterval = setInterval(() => {
+      fetchRandomSocialNotification();
+    }, Math.floor(Math.random() * (90000 - 45000 + 1)) + 45000);
+
+    return () => {
+      clearInterval(visitorInterval);
+      clearInterval(appointmentInterval);
+      clearInterval(socialInterval);
+    };
+  }, [fetchTodayAppointments, fetchRandomSocialNotification]);
+
+  useEffect(() => {
+    async function fetchData() {
+      // Fetch Barbers
+      const { data: barbersData } = await supabase.from('barbers').select('*');
+      if (barbersData && barbersData.length > 0) {
+        setBarbers(barbersData);
       } else {
-        // Mock data
         setBarbers([
           { id: '1', full_name: 'Thiago Oliveira', avatar_url: 'https://images.unsplash.com/photo-1599351431247-f10b21698303?auto=format&fit=crop&q=80&w=400', specialty: 'Mestre em Barboterapia & Estética' },
           { id: '2', full_name: 'Gabriel Santos', avatar_url: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=400', specialty: 'Expert em Fade & Degradê Moderno' },
           { id: '3', full_name: 'Marcos Lima', avatar_url: 'https://images.unsplash.com/photo-1621605815841-aa378137397b?auto=format&fit=crop&q=80&w=400', specialty: 'Especialista em Cortes Clássicos' },
         ]);
       }
+
+      // Fetch Highlight Barber (Best of the Month)
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+
+      const { data: apps } = await supabase
+        .from('appointments')
+        .select('barber_id')
+        .gte('start_time', monthStart)
+        .lte('start_time', monthEnd);
+
+      if (apps && apps.length > 0) {
+        const counts: Record<string, number> = {};
+        apps.forEach(a => counts[a.barber_id] = (counts[a.barber_id] || 0) + 1);
+        const topBarberId = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+        if (topBarberId) {
+          const { data: topBarberData } = await supabase
+            .from('barbers')
+            .select('*')
+            .eq('id', topBarberId)
+            .single();
+          
+          if (topBarberData) {
+            setBestBarber({
+              ...topBarberData,
+              count: counts[topBarberId]
+            });
+          }
+        }
+      }
+
+      // Fetch Highlighted Transformations
+      const { data: transformations } = await supabase
+        .from('transformations')
+        .select('*')
+        .eq('is_highlighted', true)
+        .order('created_at', { ascending: false })
+        .limit(3);
+      
+      if (transformations && transformations.length > 0) {
+        setHighlights(transformations);
+      }
     }
-    fetchBarbers();
+    fetchData();
   }, []);
   return (
     <PublicLayout>
@@ -57,23 +184,45 @@ function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-semibold tracking-widest uppercase mb-6">
-                <Sparkles className="w-3 h-3" />
-                Excelência e Honra
-              </span>
-              <h1 className="text-5xl md:text-7xl font-serif font-bold text-white mb-6 leading-tight">
+              <div className="flex flex-col items-center gap-4 mb-6">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={onlineVisitors}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-[10px] font-bold uppercase tracking-widest"
+                  >
+                    <UsersIcon className="w-3 h-3 text-primary" />
+                    {onlineVisitors} pessoas estão vendo este site agora
+                  </motion.span>
+                </AnimatePresence>
+                
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-semibold tracking-widest uppercase">
+                  <Sparkles className="w-3 h-3" />
+                  Excelência e Honra
+                </span>
+              </div>
+              <h1 className="text-4xl md:text-5xl lg:text-7xl font-serif font-bold text-white mb-6 leading-tight text-center lg:text-left">
                 The Royal Cut <br />
                 <span className="text-primary italic">Barbearia e Irmandade</span>
               </h1>
-              <p className="max-w-2xl mx-auto text-lg md:text-xl text-gray-300 mb-10">
+              <p className="max-w-2xl mx-auto lg:mx-0 text-lg md:text-xl text-gray-300 mb-10 text-center lg:text-left">
                 Muito mais que um corte. Um espaço de honra, excelência e irmandade, guiado pelo Thiago para servir você com o melhor da arte da barbearia.
               </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Button onClick={() => booking.open()} size="lg" className="h-14 px-8 text-base bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-bold">
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+                <Button 
+                  onClick={() => booking.open()}
+                  className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-14 rounded-full font-bold text-lg shadow-lg shadow-primary/20"
+                >
                   Agendar Horário
                   <Calendar className="ml-2 w-5 h-5" />
                 </Button>
-                <Button onClick={() => chatbot.open()} size="lg" variant="outline" className="h-14 px-8 text-base border-white/20 text-white hover:bg-white/10 rounded-full backdrop-blur-sm">
+                <Button 
+                  onClick={() => chatbot.open()}
+                  variant="outline" 
+                  className="w-full sm:w-auto border-white/20 hover:bg-white/5 px-8 h-14 rounded-full font-bold text-lg"
+                >
                   Falar com nossa IA
                   <Sparkles className="ml-2 w-5 h-5" />
                 </Button>
@@ -86,6 +235,16 @@ function LandingPage() {
             <div className="w-px h-12 bg-gradient-to-b from-primary to-transparent" />
           </div>
         </section>
+
+        {/* Urgency Ribbon */}
+        <div className="relative z-30 bg-primary/90 backdrop-blur-md py-3 overflow-hidden border-y border-white/10">
+          <div className="container px-6 mx-auto flex items-center justify-center gap-3 text-black font-black text-[10px] md:text-xs uppercase tracking-[0.2em]">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>
+              {todayAppointments} agendamentos realizados hoje — Reserve o seu antes que os horários acabem!
+            </span>
+          </div>
+        </div>
 
         {/* Our History Section */}
         <section className="py-24 bg-background overflow-hidden">
@@ -277,42 +436,129 @@ function LandingPage() {
             </motion.div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6 }}
-              >
-                <BeforeAfterSlider 
-                  beforeImage="https://images.unsplash.com/photo-1599351431247-f10b21698303?auto=format&fit=crop&q=80&w=800"
-                  afterImage="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=800"
-                />
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                <BeforeAfterSlider 
-                  beforeImage="https://images.unsplash.com/photo-1621605815841-aa378137397b?auto=format&fit=crop&q=80&w=800"
-                  afterImage="https://images.unsplash.com/photo-1590540179852-2110a54f813a?auto=format&fit=crop&q=80&w=800"
-                />
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-              >
-                <BeforeAfterSlider 
-                  beforeImage="https://images.unsplash.com/photo-1512690196222-7c74e041bd2e?auto=format&fit=crop&q=80&w=800"
-                  afterImage="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=800"
-                />
-              </motion.div>
+              {highlights.length > 0 ? (
+                highlights.map((photo, i) => (
+                  <motion.div
+                    key={photo.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: i * 0.2 }}
+                  >
+                    <BeforeAfterSlider 
+                      beforeImage={photo.before_image_url}
+                      afterImage={photo.after_image_url}
+                    />
+                    <div className="mt-4 flex items-center justify-between px-2">
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">
+                        {photo.style_tag || "Estilo Royal"}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))
+              ) : (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6 }}
+                  >
+                    <BeforeAfterSlider 
+                      beforeImage="https://images.unsplash.com/photo-1599351431247-f10b21698303?auto=format&fit=crop&q=80&w=800"
+                      afterImage="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=800"
+                    />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                  >
+                    <BeforeAfterSlider 
+                      beforeImage="https://images.unsplash.com/photo-1621605815841-aa378137397b?auto=format&fit=crop&q=80&w=800"
+                      afterImage="https://images.unsplash.com/photo-1590540179852-2110a54f813a?auto=format&fit=crop&q=80&w=800"
+                    />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.4 }}
+                  >
+                    <BeforeAfterSlider 
+                      beforeImage="https://images.unsplash.com/photo-1512690196222-7c74e041bd2e?auto=format&fit=crop&q=80&w=800"
+                      afterImage="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=800"
+                    />
+                  </motion.div>
+                </>
+              )}
             </div>
           </div>
         </section>
+
+        {/* Barber of the Month Highlight */}
+        {bestBarber && (
+          <section className="py-24 bg-gradient-to-b from-background to-card relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none" />
+            <div className="container px-6 mx-auto">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                className="max-w-4xl mx-auto rounded-[3rem] p-12 bg-zinc-950/80 border-2 border-primary/30 backdrop-blur-xl relative"
+              >
+                <div className="absolute top-0 right-12 -translate-y-1/2">
+                  <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center shadow-2xl shadow-primary/40 rotate-12">
+                    <Star className="w-12 h-12 text-black fill-black" />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                  <div className="relative">
+                    <div className="aspect-square rounded-full overflow-hidden border-8 border-primary/10 p-2">
+                      <img 
+                        src={bestBarber.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bestBarber.full_name}`} 
+                        alt={bestBarber.full_name}
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    <span className="inline-block px-4 py-1.5 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-black uppercase tracking-[0.3em]">
+                      Destaque do Mês
+                    </span>
+                    <h2 className="text-4xl md:text-5xl font-serif font-black text-white italic">
+                      {bestBarber.full_name}
+                    </h2>
+                    <p className="text-xl text-muted-foreground leading-relaxed">
+                      "Honra, dedicação e excelência em cada detalhe. Nosso destaque de {format(new Date(), 'MMMM', { locale: ptBR })}."
+                    </p>
+                    <div className="flex items-center gap-4 py-6 border-y border-white/5">
+                      <div className="text-center">
+                        <div className="text-3xl font-serif font-black text-primary">{bestBarber.count}</div>
+                        <div className="text-[10px] uppercase tracking-widest text-white/40">Atendimentos</div>
+                      </div>
+                      <div className="w-px h-12 bg-white/5" />
+                      <div className="text-center">
+                        <div className="text-3xl font-serif font-black text-primary">100%</div>
+                        <div className="text-[10px] uppercase tracking-widest text-white/40">Satisfação</div>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={() => booking.open(null, bestBarber.id)}
+                      size="lg" 
+                      className="bg-primary text-black font-black uppercase tracking-widest hover:scale-105 transition-transform"
+                    >
+                      Agendar com o Especialista
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </section>
+        )}
 
         {/* Testimonials Section */}
         <section className="py-24 bg-background">

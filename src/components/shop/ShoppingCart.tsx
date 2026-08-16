@@ -18,6 +18,8 @@ export function ShoppingCart() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<string>("");
   const [asaasData, setAsaasData] = useState<any>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(900);
+  const [isExpired, setIsExpired] = useState(false);
 
   const startPaymentFn = useServerFn(createAsaasPayment);
 
@@ -34,6 +36,34 @@ export function ShoppingCart() {
       setTimeout(() => setCheckoutStep("cart"), 300);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    let timer: any;
+    if ((checkoutStep === "payment_pix" || checkoutStep === "payment_card") && timeLeft > 0 && !isExpired) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            setIsExpired(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [checkoutStep, timeLeft, isExpired]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleRegeneratePix = () => {
+    setTimeLeft(900);
+    setIsExpired(false);
+    handleCreateOrder('PIX');
+  };
 
   // Realtime subscription for order payment status
   useEffect(() => {
@@ -280,15 +310,38 @@ export function ShoppingCart() {
                     <div className="w-48 h-48 flex items-center justify-center text-black">QR Code indisponível</div>
                   )}
                 </div>
-                <div className="space-y-3">
-                  <Button onClick={copyPix} variant="outline" className="w-full gap-2 border-primary/20 hover:border-primary/50 text-white">
-                    {pixCopied ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                    {pixCopied ? "Copiado!" : "Copiar Código Copia e Cola"}
-                  </Button>
-                  <div className="flex items-center justify-center gap-2 pt-4">
-                    <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                    <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Monitorando pagamento via realtime...</span>
+                <div className="space-y-4">
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                    {isExpired ? (
+                      <div className="space-y-3">
+                        <p className="text-red-400 text-xs font-bold uppercase tracking-widest">Código expirado — gere um novo PIX</p>
+                        <Button 
+                          onClick={handleRegeneratePix}
+                          className="w-full bg-primary text-black font-bold h-10 rounded-xl"
+                        >
+                          Gerar Novo PIX
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Expira em</p>
+                        <p className="text-2xl font-mono font-bold text-primary">⏱️ {formatTime(timeLeft)}</p>
+                      </div>
+                    )}
                   </div>
+
+                  {!isExpired && (
+                    <>
+                      <Button onClick={copyPix} variant="outline" className="w-full gap-2 border-primary/20 hover:border-primary/50 text-white">
+                        {pixCopied ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                        {pixCopied ? "Copiado!" : "Copiar Código Copia e Cola"}
+                      </Button>
+                      <div className="flex items-center justify-center gap-2 pt-2">
+                        <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                        <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Monitorando pagamento via realtime...</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </motion.div>
             ) : checkoutStep === "payment_card" ? (

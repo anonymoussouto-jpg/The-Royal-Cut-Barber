@@ -1,23 +1,46 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Scissors } from "lucide-react";
+import { Scissors, ImageIcon } from "lucide-react";
 import { useBooking } from "@/hooks/use-booking";
+import { supabase } from "@/integrations/supabase/client";
 
-const inspirations = [
-  { id: 1, title: "Low Fade Texturizado", style: "Fade", img: "https://images.unsplash.com/photo-1599351431247-f10b21698303?auto=format&fit=crop&q=80&w=400" },
-  { id: 2, title: "Pompadour Clássico", style: "Clássico", img: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=400" },
-  { id: 3, title: "Barba Lenhador", style: "Barba", img: "https://images.unsplash.com/photo-1621605815841-aa378137397b?auto=format&fit=crop&q=80&w=400" },
-  { id: 4, title: "Buzz Cut Crespo", style: "Crespo", img: "https://images.unsplash.com/photo-1590540179852-2110a54f813a?auto=format&fit=crop&q=80&w=400" },
-  { id: 5, title: "Platinado Moderno", style: "Platinado", img: "https://images.unsplash.com/photo-1512690196222-7c74e041bd2e?auto=format&fit=crop&q=80&w=400" },
-  { id: 6, title: "Mid Fade", style: "Fade", img: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80&w=400" },
+const defaultInspirations = [
+  { id: 'd1', title: "Low Fade Texturizado", style: "Fade", img: "https://images.unsplash.com/photo-1599351431247-f10b21698303?auto=format&fit=crop&q=80&w=400" },
+  { id: 'd2', title: "Pompadour Clássico", style: "Clássico", img: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=400" },
+  { id: 'd3', title: "Barba Lenhador", style: "Barba", img: "https://images.unsplash.com/photo-1621605815841-aa378137397b?auto=format&fit=crop&q=80&w=400" },
+  { id: 'd4', title: "Buzz Cut Crespo", style: "Crespo", img: "https://images.unsplash.com/photo-1590540179852-2110a54f813a?auto=format&fit=crop&q=80&w=400" },
+  { id: 'd5', title: "Platinado Moderno", style: "Platinado", img: "https://images.unsplash.com/photo-1512690196222-7c74e041bd2e?auto=format&fit=crop&q=80&w=400" },
+  { id: 'd6', title: "Mid Fade", style: "Fade", img: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80&w=400" },
 ];
 
-const filters = ["Todos", "Fade", "Clássico", "Barba", "Crespo", "Platinado"];
+const staticFilters = ["Todos", "Fade", "Clássico", "Barba", "Crespo", "Platinado"];
 
 export function StyleGallery() {
   const [activeFilter, setActiveFilter] = useState("Todos");
+  const [inspirations, setInspirations] = useState<any[]>(defaultInspirations);
   const { open } = useBooking();
+
+  useEffect(() => {
+    async function fetchTransformations() {
+      const { data } = await supabase
+        .from('transformations')
+        .select('*')
+        .eq('is_highlighted', true)
+        .order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        const transformed = data.map(t => ({
+          id: t.id,
+          title: `Trabalho de Especialista`,
+          style: t.style_tag || "Geral",
+          img: t.after_image_url
+        }));
+        setInspirations([...transformed, ...defaultInspirations]);
+      }
+    }
+    fetchTransformations();
+  }, []);
 
   const filtered = activeFilter === "Todos" 
     ? inspirations 
@@ -28,7 +51,7 @@ export function StyleGallery() {
       <div className="flex flex-col items-center mb-10">
         <h2 className="text-3xl font-serif font-bold mb-6 text-center">Inspirações de Corte</h2>
         <div className="flex flex-wrap justify-center gap-2">
-          {filters.map(filter => (
+          {staticFilters.map(filter => (
             <button
               key={filter}
               onClick={() => setActiveFilter(filter)}
