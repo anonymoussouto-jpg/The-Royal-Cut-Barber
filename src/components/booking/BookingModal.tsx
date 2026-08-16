@@ -14,7 +14,9 @@ import {
   Copy,
   ChevronRight,
   ChevronLeft,
-  Loader2
+  Loader2,
+  Check,
+  CreditCard
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -130,7 +132,7 @@ export function BookingModal() {
     '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
   ];
 
-  const handleBooking = async () => {
+  const handleBooking = async (paymentStatus: 'confirmed' | 'pending' = 'confirmed') => {
     setLoading(true);
     try {
       // Simulate payment delay
@@ -148,7 +150,7 @@ export function BookingModal() {
         client_id: user?.id || '00000000-0000-0000-0000-000000000000',
         start_time: startTime.toISOString(),
         total_price: selectedService.price,
-        status: 'confirmed'
+        status: paymentStatus === 'confirmed' ? 'confirmed' : 'pending'
       });
 
       if (error) throw error;
@@ -167,9 +169,57 @@ export function BookingModal() {
     toast.success('Código PIX copiado!');
   };
 
+  const formatPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 2) return numbers;
+    if (numbers.length <= 6) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    if (numbers.length <= 10) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`;
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  };
+
+  const steps: { key: Step; label: string; icon: any }[] = [
+    { key: 'service', label: 'Serviço', icon: Scissors },
+    { key: 'barber', label: 'Barbeiro', icon: User },
+    { key: 'datetime', label: 'Data/Hora', icon: CalendarIcon },
+    { key: 'info', label: 'Dados', icon: CheckCircle2 },
+    { key: 'payment', label: 'PIX', icon: QrCode },
+    { key: 'success', label: 'Confirmado', icon: Check },
+  ];
+
+  const currentStepIndex = steps.findIndex(s => s.key === step);
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
       <DialogContent className="sm:max-w-[500px] bg-[#0A0A0A] border-white/10 text-white overflow-hidden p-0">
+        {/* Stepper */}
+        <div className="px-6 py-4 bg-white/5 border-b border-white/10 overflow-x-auto no-scrollbar">
+          <div className="flex items-center justify-between min-w-[400px]">
+            {steps.map((s, idx) => {
+              const Icon = s.icon;
+              const isCompleted = idx < currentStepIndex || step === 'success';
+              const isActive = s.key === step;
+              
+              return (
+                <div key={s.key} className="flex flex-col items-center gap-1.5 flex-1 relative">
+                  {idx !== 0 && (
+                    <div className={`absolute right-1/2 w-full h-[2px] -z-10 top-4 ${isCompleted ? 'bg-green-500/50' : 'bg-white/10'}`} />
+                  )}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                    isCompleted ? 'bg-green-500 text-white' : 
+                    isActive ? 'bg-primary text-primary-foreground ring-4 ring-primary/20' : 
+                    'bg-white/5 text-white/40'
+                  }`}>
+                    {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                  </div>
+                  <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? 'text-primary' : 'text-white/40'}`}>
+                    {s.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="p-6">
           <AnimatePresence mode="wait">
             {step === 'service' && (
@@ -369,7 +419,7 @@ export function BookingModal() {
                     <label className="text-xs font-bold text-white/40 uppercase tracking-widest">WhatsApp</label>
                     <input 
                       value={clientPhone}
-                      onChange={(e) => setClientPhone(e.target.value)}
+                      onChange={(e) => setClientPhone(formatPhone(e.target.value))}
                       placeholder="(00) 00000-0000"
                       className="w-full bg-white/5 border border-white/10 rounded-xl h-12 px-4 focus:border-primary outline-none transition-all"
                     />
@@ -437,13 +487,25 @@ export function BookingModal() {
                     <div className="h-px flex-grow bg-white/10" />
                   </div>
 
-                  <Button 
-                    disabled={loading}
-                    onClick={handleBooking}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white h-12 rounded-xl font-bold"
-                  >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirmar Pagamento"}
-                  </Button>
+                  <div className="grid gap-2">
+                    <Button 
+                      disabled={loading}
+                      onClick={() => handleBooking('confirmed')}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white h-12 rounded-xl font-bold"
+                    >
+                      {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Já paguei via PIX"}
+                    </Button>
+
+                    <Button 
+                      variant="ghost"
+                      disabled={loading}
+                      onClick={() => handleBooking('pending')}
+                      className="w-full text-white/60 hover:text-white h-10 rounded-xl text-xs flex items-center justify-center gap-2"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      Prefiro pagar presencialmente
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
             )}

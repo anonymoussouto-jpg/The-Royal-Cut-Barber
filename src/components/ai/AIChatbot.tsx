@@ -10,6 +10,7 @@ import { useChatbot } from "@/hooks/use-chatbot";
 
 export function AIChatbot() {
   const { isOpen, open, close } = useChatbot();
+  const [showBubble, setShowBubble] = useState(true);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<{ role: "assistant" | "user" | "system"; content: string }[]>([
     { role: "assistant", content: "Olá, seja bem-vindo à The Royal Cut, a barbearia do Thiago. Como posso servir você hoje?" }
@@ -27,10 +28,15 @@ export function AIChatbot() {
 
   const sendMessage = useServerFn(chatWithAI);
 
-  const handleSend = async () => {
-    if (!message.trim() || isTyping) return;
+  const handleQuickReply = (text: string) => {
+    handleSend(text);
+  };
+
+  const handleSend = async (textOverride?: string) => {
+    const textToSend = textOverride || message;
+    if (!textToSend.trim() || isTyping) return;
     
-    const userMessage = { role: "user" as const, content: message };
+    const userMessage = { role: "user" as const, content: textToSend };
     const newMessages = [...messages, userMessage];
     
     setMessages(newMessages);
@@ -62,9 +68,35 @@ export function AIChatbot() {
 
   return (
     <>
+      {/* Greeting Bubble */}
+      <AnimatePresence>
+        {!isOpen && showBubble && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 10 }}
+            className="fixed bottom-24 right-6 z-50 bg-card border border-border/40 p-3 rounded-2xl shadow-xl max-w-[200px]"
+          >
+            <div className="relative">
+              <p className="text-xs font-medium text-foreground">Olá! Precisa de ajuda para agendar? 👋</p>
+              <button 
+                onClick={() => setShowBubble(false)}
+                className="absolute -top-4 -right-4 p-1 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-3 h-3" />
+              </button>
+              <div className="absolute -bottom-4 right-6 w-3 h-3 bg-card border-r border-b border-border/40 rotate-45" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Trigger Button */}
       <Button
-        onClick={() => open()}
+        onClick={() => {
+          open();
+          setShowBubble(false);
+        }}
         className={`fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 p-0 shadow-2xl transition-all duration-300 ${isOpen ? 'scale-0' : 'scale-100'} bg-primary hover:bg-primary/90 text-primary-foreground`}
       >
         <MessageSquare className="w-6 h-6" />
@@ -131,8 +163,21 @@ export function AIChatbot() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
+            {/* Input and Quick Replies */}
             <div className="p-6 border-t border-border/40 bg-card/50 backdrop-blur-sm">
+              {/* Quick Replies */}
+              <div className="flex gap-2 overflow-x-auto pb-3 mb-1 no-scrollbar">
+                {["📅 Horários disponíveis hoje", "✂️ Preços e serviços", "👑 Planos do Clube", "💳 Chave PIX"].map((reply) => (
+                  <button
+                    key={reply}
+                    onClick={() => handleQuickReply(reply)}
+                    className="whitespace-nowrap px-3 py-1.5 rounded-full bg-muted border border-border/40 text-[10px] font-bold text-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                  >
+                    {reply}
+                  </button>
+                ))}
+              </div>
+
               <div className="flex gap-2">
                 <Input 
                   placeholder="Como posso ajudar?" 
