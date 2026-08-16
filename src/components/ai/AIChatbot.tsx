@@ -86,10 +86,18 @@ REGRAS:
       const { data: settings } = await supabase
         .from('system_settings')
         .select('key, value')
-        .in('key', ['gemini_key', 'groq_key']);
+        .in('key', ['gemini_api_key_1', 'gemini_key_1', 'groq_api_key_1', 'groq_key_1']);
 
-      const geminiKey = settings?.find(s => s.key === 'gemini_key')?.value as string | undefined;
-      const groqKey = settings?.find(s => s.key === 'groq_key')?.value as string | undefined;
+      const extractKey = (val: any) => {
+        if (!val) return undefined;
+        try {
+          const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+          return typeof parsed === 'string' ? parsed : JSON.stringify(parsed).replace(/^"|"$/g, '');
+        } catch { return String(val).replace(/^"|"$/g, ''); }
+      };
+
+      const geminiKey = extractKey(settings?.find(s => s.key === 'gemini_api_key_1' || s.key === 'gemini_key_1')?.value);
+      const groqKey = extractKey(settings?.find(s => s.key === 'groq_api_key_1' || s.key === 'groq_key_1')?.value);
 
       // 3. Prepare and sanitize history for Gemini
       // Gemini requires first message to be from 'user'
