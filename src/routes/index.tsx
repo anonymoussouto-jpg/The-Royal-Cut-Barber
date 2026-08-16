@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Scissors, Calendar, Sparkles, Star, ArrowRight } from "lucide-react";
+import { Scissors, Calendar, Sparkles, Star, ArrowRight, Quote } from "lucide-react";
 import PublicLayout from "@/components/layout/PublicLayout";
 import { AIChatbot } from "@/components/ai/AIChatbot";
 import { useBooking } from "@/hooks/use-booking";
 import { useChatbot } from "@/hooks/use-chatbot";
+import { BeforeAfterSlider } from "@/components/ui/before-after-slider";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -15,6 +18,24 @@ export const Route = createFileRoute("/")({
 function LandingPage() {
   const booking = useBooking();
   const chatbot = useChatbot();
+  const [barbers, setBarbers] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchBarbers() {
+      const { data } = await supabase.from('barbers').select('*');
+      if (data && data.length > 0) {
+        setBarbers(data);
+      } else {
+        // Mock data
+        setBarbers([
+          { id: '1', full_name: 'Thiago Oliveira', avatar_url: 'https://images.unsplash.com/photo-1599351431247-f10b21698303?auto=format&fit=crop&q=80&w=400', specialty: 'Mestre em Barboterapia & Estética' },
+          { id: '2', full_name: 'Gabriel Santos', avatar_url: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=400', specialty: 'Expert em Fade & Degradê Moderno' },
+          { id: '3', full_name: 'Marcos Lima', avatar_url: 'https://images.unsplash.com/photo-1621605815841-aa378137397b?auto=format&fit=crop&q=80&w=400', specialty: 'Especialista em Cortes Clássicos' },
+        ]);
+      }
+    }
+    fetchBarbers();
+  }, []);
   return (
     <PublicLayout>
       <div className="flex flex-col w-full overflow-hidden">
@@ -123,6 +144,157 @@ function LandingPage() {
                     <Button onClick={() => booking.open()} variant="link" className="p-0 text-primary font-bold group-hover:gap-2 transition-all">
                       Ver detalhes <ArrowRight className="w-4 h-4" />
                     </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Team Section */}
+        <section className="py-24 bg-background">
+          <div className="container px-6 mx-auto text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="mb-16"
+            >
+              <h2 className="text-sm font-semibold tracking-[0.3em] text-primary uppercase mb-4">Nossa Equipe</h2>
+              <h3 className="text-4xl md:text-5xl font-serif font-bold">Mestres Barbeiros</h3>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+              {barbers.map((barber, i) => (
+                <motion.div
+                  key={barber.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: i * 0.1 }}
+                  className="flex flex-col items-center"
+                >
+                  <div className="relative mb-6">
+                    <div className="w-48 h-48 rounded-full border-4 border-primary/20 p-2 overflow-hidden transition-all duration-500 hover:border-primary">
+                      <img 
+                        src={barber.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${barber.full_name}`} 
+                        alt={barber.full_name}
+                        className="w-full h-full rounded-full object-cover grayscale hover:grayscale-0 transition-all duration-500"
+                      />
+                    </div>
+                  </div>
+                  <h4 className="text-2xl font-bold font-serif mb-2">{barber.full_name}</h4>
+                  <p className="text-primary text-sm font-medium mb-6 uppercase tracking-wider">{barber.specialty || 'Expert Barber'}</p>
+                  <Button 
+                    onClick={() => booking.open(null, barber.id)}
+                    variant="outline" 
+                    className="border-primary/20 hover:border-primary hover:bg-primary/10 text-white rounded-full px-6"
+                  >
+                    Agendar com {barber.full_name.split(' ')[0]}
+                  </Button>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Transformations Section */}
+        <section className="py-24 bg-card relative overflow-hidden">
+          <div className="container px-6 mx-auto relative z-10">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="text-center mb-16"
+            >
+              <h2 className="text-sm font-semibold tracking-[0.3em] text-primary uppercase mb-4">Resultados Reais</h2>
+              <h3 className="text-4xl md:text-5xl font-serif font-bold">Transformações</h3>
+            </motion.div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+              >
+                <BeforeAfterSlider 
+                  beforeImage="https://images.unsplash.com/photo-1599351431247-f10b21698303?auto=format&fit=crop&q=80&w=800"
+                  afterImage="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=800"
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                <BeforeAfterSlider 
+                  beforeImage="https://images.unsplash.com/photo-1621605815841-aa378137397b?auto=format&fit=crop&q=80&w=800"
+                  afterImage="https://images.unsplash.com/photo-1590540179852-2110a54f813a?auto=format&fit=crop&q=80&w=800"
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+              >
+                <BeforeAfterSlider 
+                  beforeImage="https://images.unsplash.com/photo-1512690196222-7c74e041bd2e?auto=format&fit=crop&q=80&w=800"
+                  afterImage="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=800"
+                />
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* Testimonials Section */}
+        <section className="py-24 bg-background">
+          <div className="container px-6 mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="text-center mb-16"
+            >
+              <h2 className="text-sm font-semibold tracking-[0.3em] text-primary uppercase mb-4">Depoimentos</h2>
+              <h3 className="text-4xl md:text-5xl font-serif font-bold italic">O Que Dizem Nossos Irmãos</h3>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {[
+                { name: "Carlos Eduardo", text: "Além do corte impecável, saí com o espírito renovado. A The Royal Cut é mais que uma barbearia, é um espaço de irmandade!", initials: "CE" },
+                { name: "Rafael Silva", text: "Thiago e sua equipe trabalham com uma excelência rara. O ambiente é de total respeito e camaradagem. Recomendo muito!", initials: "RS" },
+                { name: "André Luiz", text: "Lugar abençoado! O atendimento é personalizado e você se sente em casa. Um verdadeiro refúgio para o homem cristão.", initials: "AL" },
+                { name: "Felipe Mendes", text: "A melhor experiência que já tive em uma barbearia. Tudo é feito com muita honra e cuidado. Os Barber Points são um bônus ótimo!", initials: "FM" }
+              ].map((testimonial, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: i * 0.1 }}
+                  className="bg-card p-8 rounded-3xl border border-border/40 flex flex-col relative"
+                >
+                  <Quote className="absolute top-6 right-6 w-8 h-8 text-primary/10" />
+                  <div className="flex gap-1 mb-4">
+                    {[1, 2, 3, 4, 5].map(star => <Star key={star} className="w-4 h-4 fill-primary text-primary" />)}
+                  </div>
+                  <p className="text-muted-foreground text-sm leading-relaxed mb-8 flex-grow italic">
+                    "{testimonial.text}"
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold text-xs">
+                      {testimonial.initials}
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-sm">{testimonial.name}</h5>
+                      <span className="text-[10px] text-white/40 uppercase tracking-widest">Cliente Fiel</span>
+                    </div>
                   </div>
                 </motion.div>
               ))}

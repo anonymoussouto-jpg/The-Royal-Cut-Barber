@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, Link, useRouterState } from "@tanstack/react-router";
-import { Scissors, ShoppingBag, Calendar, User, MessageSquare, LayoutDashboard, Instagram, MapPin, Clock } from "lucide-react";
+import { Scissors, ShoppingBag, Calendar, User, MessageSquare, LayoutDashboard, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBooking } from "@/hooks/use-booking";
 import { useChatbot } from "@/hooks/use-chatbot";
@@ -65,7 +65,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 
           <div className="flex flex-col gap-4 items-center md:items-end">
             <div className="flex gap-4">
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="p-2 bg-white/5 rounded-full hover:bg-primary/20 transition-colors"><Instagram className="w-5 h-5 text-gray-400" /></a>
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="p-2 bg-white/5 rounded-full hover:bg-primary/20 transition-colors"><MessageSquare className="w-5 h-5 text-gray-400" /></a>
               <a href="https://whatsapp.com" target="_blank" rel="noopener noreferrer" className="p-2 bg-white/5 rounded-full hover:bg-primary/20 transition-colors"><MessageSquare className="w-5 h-5 text-gray-400" /></a>
             </div>
             <p className="text-xs text-gray-600">© 2026 The Royal Cut. Todos os direitos reservados.</p>

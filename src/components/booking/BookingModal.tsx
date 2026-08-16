@@ -30,7 +30,7 @@ import {
 type Step = 'service' | 'barber' | 'datetime' | 'info' | 'payment' | 'success';
 
 export function BookingModal() {
-  const { isOpen, close, serviceId: initialServiceId } = useBooking();
+  const { isOpen, close, serviceId: initialServiceId, barberId: initialBarberId } = useBooking();
   const [step, setStep] = useState<Step>('service');
   const [loading, setLoading] = useState(false);
   
@@ -72,6 +72,16 @@ export function BookingModal() {
   }, [initialServiceId, services]);
 
   useEffect(() => {
+    if (initialBarberId && barbers.length > 0) {
+      const barber = barbers.find(b => b.id === initialBarberId);
+      if (barber) {
+        setSelectedBarber(barber);
+        setStep('datetime');
+      }
+    }
+  }, [initialBarberId, barbers]);
+
+  useEffect(() => {
     if (selectedBarber && selectedDate) {
       fetchBookedSlots();
     }
@@ -93,7 +103,7 @@ export function BookingModal() {
       .select('value')
       .eq('key', 'pix_key')
       .single();
-    if (data?.value) setPixKey(data.value);
+    if (data?.value) setPixKey(String(data.value));
   }
 
   async function fetchBookedSlots() {
