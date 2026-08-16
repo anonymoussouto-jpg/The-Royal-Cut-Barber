@@ -187,7 +187,7 @@ export function AIChatbot() {
                   className="rounded-full bg-background border-border/40"
                 />
                 <Button 
-                  onClick={handleSend}
+                  onClick={() => handleSend()}
                   size="icon" 
                   className="rounded-full shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
