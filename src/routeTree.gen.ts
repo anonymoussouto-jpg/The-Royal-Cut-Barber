@@ -18,6 +18,7 @@ import { Route as ShopRouteImport } from './routes/shop'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminCalendarRouteImport } from './routes/admin/calendar'
 import { Route as AdminCrmRouteImport } from './routes/admin/crm'
+import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminStaffRouteImport } from './routes/admin/staff'
 
@@ -66,6 +67,11 @@ const AdminCrmRoute = AdminCrmRouteImport.update({
   path: '/crm',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminOrdersRoute = AdminOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/shop': typeof ShopRoute
   '/admin/calendar': typeof AdminCalendarRoute
   '/admin/crm': typeof AdminCrmRoute
+  '/admin/orders': typeof AdminOrdersRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/': typeof AdminIndexRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/shop': typeof ShopRoute
   '/admin/calendar': typeof AdminCalendarRoute
   '/admin/crm': typeof AdminCrmRoute
+  '/admin/orders': typeof AdminOrdersRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin': typeof AdminIndexRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/shop': typeof ShopRoute
   '/admin/calendar': typeof AdminCalendarRoute
   '/admin/crm': typeof AdminCrmRoute
+  '/admin/orders': typeof AdminOrdersRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/': typeof AdminIndexRoute
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/admin/calendar'
     | '/admin/crm'
+    | '/admin/orders'
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/admin/calendar'
     | '/admin/crm'
+    | '/admin/orders'
     | '/admin/settings'
     | '/admin/staff'
     | '/admin'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/admin/calendar'
     | '/admin/crm'
+    | '/admin/orders'
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/'
@@ -231,6 +243,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCrmRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/orders': {
+      id: '/admin/orders'
+      path: '/orders'
+      fullPath: '/admin/orders'
+      preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -251,6 +270,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminCalendarRoute: typeof AdminCalendarRoute
   AdminCrmRoute: typeof AdminCrmRoute
+  AdminOrdersRoute: typeof AdminOrdersRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminStaffRoute: typeof AdminStaffRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -259,6 +279,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminCalendarRoute: AdminCalendarRoute,
   AdminCrmRoute: AdminCrmRoute,
+  AdminOrdersRoute: AdminOrdersRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminStaffRoute: AdminStaffRoute,
   AdminIndexRoute: AdminIndexRoute,

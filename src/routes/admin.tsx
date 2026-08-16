@@ -7,9 +7,13 @@ import {
   Scissors, 
   Settings, 
   LogOut,
-  ChevronRight
+  ChevronRight,
+  ShoppingBag,
+  User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ location }) => {
@@ -40,6 +44,37 @@ export const Route = createFileRoute("/admin")({
 function AdminLayout() {
   const router = useRouterState();
   const currentPath = router.location.pathname;
+  const [adminProfile, setAdminProfile] = useState<{ full_name: string | null; avatar_url: string | null } | null>(null);
+
+  useEffect(() => {
+    const fetchAdminProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (data) {
+          setAdminProfile(data);
+        }
+      }
+    };
+
+    fetchAdminProfile();
+  }, []);
+
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return "AD";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
 
   const menuItems = [
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -111,12 +146,17 @@ function AdminLayout() {
           
           <div className="flex items-center gap-4">
              <div className="flex flex-col items-end">
-                <span className="text-xs font-bold text-primary uppercase">Thiago</span>
+                <span className="text-xs font-bold text-primary uppercase">
+                  {adminProfile?.full_name || "Administrador"}
+                </span>
                 <span className="text-[10px] text-white/40">Master Administrator</span>
              </div>
-             <div className="w-10 h-10 rounded-full border border-primary/20 p-0.5 bg-primary/10">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Thiago" className="w-full h-full rounded-full" />
-             </div>
+             <Avatar className="w-10 h-10 border border-primary/20 p-0.5 bg-primary/10">
+                <AvatarImage src={adminProfile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${adminProfile?.full_name || 'Admin'}`} />
+                <AvatarFallback className="bg-primary text-black font-bold">
+                  {getInitials(adminProfile?.full_name)}
+                </AvatarFallback>
+             </Avatar>
           </div>
         </header>
         
