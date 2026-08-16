@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  ShoppingBag, 
-  Clock, 
-  CheckCircle2, 
+import {
+  ShoppingBag,
+  Clock,
+  CheckCircle2,
   AlertCircle,
   ChevronRight,
   ExternalLink,
   Loader2,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -26,42 +26,43 @@ function AdminOrders() {
   const queryClient = useQueryClient();
 
   const { data: orders, isLoading } = useQuery({
-    queryKey: ['admin-orders'],
+    queryKey: ["admin-orders"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+
       if (error) throw error;
       return data;
-    }
+    },
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ orderId, status }: { orderId: string, status: string }) => {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status })
-        .eq('id', orderId);
-      
+    mutationFn: async ({ orderId, status }: { orderId: string; status: string }) => {
+      const { error } = await supabase.from("orders").update({ status }).eq("id", orderId);
+
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
       toast.success("Status do pedido atualizado!");
     },
     onError: (error: any) => {
       toast.error("Erro ao atualizar status: " + error.message);
-    }
+    },
   });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending':
-        return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">Pendente</Badge>;
-      case 'confirmed':
-        return <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Confirmado</Badge>;
+      case "pending":
+        return (
+          <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">Pendente</Badge>
+        );
+      case "confirmed":
+        return (
+          <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Confirmado</Badge>
+        );
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -71,7 +72,9 @@ function AdminOrders() {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-4">
         <Loader2 className="w-12 h-12 text-primary animate-spin" />
-        <p className="text-primary font-bold uppercase tracking-widest text-xs">Carregando pedidos...</p>
+        <p className="text-primary font-bold uppercase tracking-widest text-xs">
+          Carregando pedidos...
+        </p>
       </div>
     );
   }
@@ -91,7 +94,10 @@ function AdminOrders() {
           </div>
         ) : (
           orders?.map((order) => (
-            <Card key={order.id} className="bg-card/50 border-white/10 overflow-hidden group hover:border-primary/30 transition-all">
+            <Card
+              key={order.id}
+              className="bg-card/50 border-white/10 overflow-hidden group hover:border-primary/30 transition-all"
+            >
               <CardContent className="p-0">
                 <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="flex items-start gap-4">
@@ -100,7 +106,9 @@ function AdminOrders() {
                     </div>
                     <div>
                       <div className="flex items-center gap-3 mb-1">
-                        <span className="text-sm font-mono text-primary font-bold">#{order.id.substring(0, 8).toUpperCase()}</span>
+                        <span className="text-sm font-mono text-primary font-bold">
+                          #{order.id.substring(0, 8).toUpperCase()}
+                        </span>
                         {getStatusBadge(order.status)}
                       </div>
                       <h3 className="font-bold text-lg">{order.client_name}</h3>
@@ -118,12 +126,18 @@ function AdminOrders() {
                   </div>
 
                   <div className="flex-grow max-w-md bg-white/5 rounded-2xl p-4 border border-white/5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-2">Itens do Pedido</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-2">
+                      Itens do Pedido
+                    </p>
                     <div className="space-y-1">
                       {(order.items as any[]).map((item, idx) => (
                         <div key={idx} className="text-xs flex justify-between">
-                          <span className="text-white/70">{item.quantity}x {item.name}</span>
-                          <span className="text-white/50">R$ {(item.price * item.quantity).toFixed(2)}</span>
+                          <span className="text-white/70">
+                            {item.quantity}x {item.name}
+                          </span>
+                          <span className="text-white/50">
+                            R$ {(item.price * item.quantity).toFixed(2)}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -131,13 +145,19 @@ function AdminOrders() {
 
                   <div className="flex flex-col items-end gap-3 shrink-0">
                     <div className="text-right">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Total</p>
-                      <p className="text-xl font-bold text-primary">R$ {Number(order.total_amount).toFixed(2)}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">
+                        Total
+                      </p>
+                      <p className="text-xl font-bold text-primary">
+                        R$ {Number(order.total_amount).toFixed(2)}
+                      </p>
                     </div>
-                    {order.status === 'pending' && (
-                      <Button 
+                    {order.status === "pending" && (
+                      <Button
                         size="sm"
-                        onClick={() => updateStatusMutation.mutate({ orderId: order.id, status: 'confirmed' })}
+                        onClick={() =>
+                          updateStatusMutation.mutate({ orderId: order.id, status: "confirmed" })
+                        }
                         disabled={updateStatusMutation.isPending}
                         className="bg-green-600 hover:bg-green-700 text-white font-bold gap-2"
                       >

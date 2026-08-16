@@ -1,10 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  Outlet,
-  createRootRouteWithContext,
-  HeadContent,
-  Scripts,
-} from "@tanstack/react-router";
+import { Outlet, createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
+import { NotFoundPage } from "./404";
 import { type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { BookingModal } from "@/components/booking/BookingModal";
@@ -16,8 +12,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "The Royal Cut | Premium Barber Experience" },
-      { name: "description", content: "Luxury barbering and grooming experiences powered by AI." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -26,6 +22,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   }),
   shellComponent: RootShell,
   component: RootComponent,
+  notFoundComponent: NotFoundPage,
 });
 
 function RootShell({ children }: { children: ReactNode }) {

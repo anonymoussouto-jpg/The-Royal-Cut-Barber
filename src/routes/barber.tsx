@@ -1,14 +1,14 @@
 import { createFileRoute, Outlet, redirect, Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  Calendar, 
-  Users, 
-  Image as ImageIcon, 
-  User, 
-  LogOut, 
+import {
+  Calendar,
+  Users,
+  Image as ImageIcon,
+  User,
+  LogOut,
   LayoutDashboard,
   Menu,
-  X
+  X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -17,21 +17,23 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/barber")({
   beforeLoad: async ({ context }) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       throw redirect({ to: "/login" });
     }
 
-    const { data: isBarber } = await supabase.rpc('has_role', {
+    const { data: isBarber } = await supabase.rpc("has_role", {
       _user_id: user.id,
-      _role: 'barber'
+      _role: "barber",
     });
 
     if (!isBarber) {
       // Check if admin (admins can also access)
-      const { data: isAdmin } = await supabase.rpc('has_role', {
+      const { data: isAdmin } = await supabase.rpc("has_role", {
         _user_id: user.id,
-        _role: 'admin'
+        _role: "admin",
       });
       if (!isAdmin) {
         throw redirect({ to: "/" });
@@ -72,7 +74,9 @@ function BarberLayout() {
           </div>
           <span className="font-serif font-bold text-xl tracking-tighter">THE ROYAL CUT</span>
         </Link>
-        <p className="text-[10px] text-primary font-bold tracking-[0.2em] mt-1 ml-10 opacity-60">PORTAL DO COLABORADOR</p>
+        <p className="text-[10px] text-primary font-bold tracking-[0.2em] mt-1 ml-10 opacity-60">
+          PORTAL DO COLABORADOR
+        </p>
       </div>
 
       <nav className="flex-1 px-4 space-y-1">
@@ -96,13 +100,15 @@ function BarberLayout() {
               <User className="w-5 h-5 text-primary" />
             </div>
             <div className="overflow-hidden">
-              <p className="font-bold text-sm truncate">{user?.email?.split('@')[0]}</p>
-              <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Colaborador</p>
+              <p className="font-bold text-sm truncate">{user?.email?.split("@")[0]}</p>
+              <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">
+                Colaborador
+              </p>
             </div>
           </div>
         </div>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onClick={handleLogout}
           className="w-full justify-start text-white/40 hover:text-destructive hover:bg-destructive/10 rounded-xl"
         >

@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 
 interface CartItem {
   id: string;
@@ -13,7 +13,7 @@ interface ShopStore {
   isOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
-  addItem: (product: any) => void;
+  addItem: (product: Omit<CartItem, "quantity">) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -28,11 +28,11 @@ export const useShopStore = create<ShopStore>((set, get) => ({
   addItem: (product) => {
     const items = get().items;
     const existingItem = items.find((item) => item.id === product.id);
-    
+
     if (existingItem) {
       set({
         items: items.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
         ),
       });
     } else {
@@ -51,9 +51,7 @@ export const useShopStore = create<ShopStore>((set, get) => ({
       return;
     }
     set({
-      items: get().items.map((item) =>
-        item.id === id ? { ...item, quantity } : item
-      ),
+      items: get().items.map((item) => (item.id === id ? { ...item, quantity } : item)),
     });
   },
   clearCart: () => set({ items: [] }),

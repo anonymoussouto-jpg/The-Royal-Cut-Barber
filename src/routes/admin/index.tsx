@@ -1,18 +1,19 @@
+import { Tables } from "@/integrations/supabase/types";
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Users, Calendar, Wallet, Loader2, CalendarRange, Star } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  format, 
-  startOfDay, 
-  startOfMonth, 
-  endOfDay, 
-  subDays, 
-  eachDayOfInterval, 
+import {
+  format,
+  startOfDay,
+  startOfMonth,
+  endOfDay,
+  subDays,
+  eachDayOfInterval,
   isSameDay,
   startOfYear,
-  endOfYear
+  endOfYear,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -24,10 +25,16 @@ import {
   Tooltip,
   ResponsiveContainer,
   LineChart,
-  Line
-} from 'recharts';
+  Line,
+} from "recharts";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminDashboard,
@@ -35,10 +42,10 @@ export const Route = createFileRoute("/admin/")({
 
 function AdminDashboard() {
   const [stats, setStats] = useState<any[]>([
-    { label: "Faturamento (Hoje)", value: "R$ 0,00", icon: Wallet, trend: "0%", key: 'revenue' },
-    { label: "Agendamentos", value: "0", icon: Calendar, trend: "0", key: 'appointments' },
-    { label: "Novos Clientes", value: "0", icon: Users, trend: "0", key: 'clients' },
-    { label: "Faturamento (Mês)", value: "R$ 0,00", icon: TrendingUp, trend: "0%", key: 'monthly' },
+    { label: "Faturamento (Hoje)", value: "R$ 0,00", icon: Wallet, trend: "0%", key: "revenue" },
+    { label: "Agendamentos", value: "0", icon: Calendar, trend: "0", key: "appointments" },
+    { label: "Novos Clientes", value: "0", icon: Users, trend: "0", key: "clients" },
+    { label: "Faturamento (Mês)", value: "R$ 0,00", icon: TrendingUp, trend: "0%", key: "monthly" },
   ]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
@@ -77,31 +84,37 @@ function AdminDashboard() {
       setLoading(true);
       const date = new Date(parseInt(selectedYear), parseInt(selectedMonth), 1);
       const monthStart = startOfMonth(date).toISOString();
-      const monthEnd = endOfDay(new Date(parseInt(selectedYear), parseInt(selectedMonth) + 1, 0)).toISOString();
+      const monthEnd = endOfDay(
+        new Date(parseInt(selectedYear), parseInt(selectedMonth) + 1, 0),
+      ).toISOString();
       const todayStart = startOfDay(new Date()).toISOString();
       const todayEnd = endOfDay(new Date()).toISOString();
 
       // Fetch monthly appointments with details for advanced reports
       const { data: monthAppsDetailed } = await supabase
-        .from('appointments')
-        .select(`
+        .from("appointments")
+        .select(
+          `
           total_price, 
           status, 
           barber_id, 
           start_time,
           services(name),
           barbers(full_name, avatar_url)
-        `)
-        .gte('start_time', monthStart)
-        .lte('start_time', monthEnd);
+        `,
+        )
+        .gte("start_time", monthStart)
+        .lte("start_time", monthEnd);
 
-      const monthRevenue = monthAppsDetailed?.filter(a => a.status === 'completed' || a.status === 'confirmed')
-        .reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0;
+      const monthRevenue =
+        monthAppsDetailed
+          ?.filter((a) => a.status === "completed" || a.status === "confirmed")
+          .reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0;
 
       // Calculate Top 5 Services
       const serviceCounts: Record<string, number> = {};
-      monthAppsDetailed?.forEach(app => {
-        const name = app.services?.name || 'Outro';
+      monthAppsDetailed?.forEach((app) => {
+        const name = app.services?.name || "Outro";
         serviceCounts[name] = (serviceCounts[name] || 0) + 1;
       });
       const top5Services = Object.entries(serviceCounts)
@@ -112,96 +125,98 @@ function AdminDashboard() {
 
       // Calculate Barber Ranking
       const barberStats: Record<string, any> = {};
-      monthAppsDetailed?.forEach(app => {
+      monthAppsDetailed?.forEach((app) => {
         const id = app.barber_id;
         if (!barberStats[id]) {
-          barberStats[id] = { 
-            name: app.barbers?.full_name || 'Desconhecido', 
+          barberStats[id] = {
+            name: app.barbers?.full_name || "Desconhecido",
             count: 0,
-            avatar: app.barbers?.avatar_url 
+            avatar: app.barbers?.avatar_url,
           };
         }
         barberStats[id].count += 1;
       });
-      const ranking = Object.values(barberStats)
-        .sort((a, b) => b.count - a.count);
+      const ranking = Object.values(barberStats).sort((a, b) => b.count - a.count);
       setBarberRanking(ranking);
       setBestBarber(ranking[0] || null);
 
       // Fetch today's summary
       const { data: todayApps } = await supabase
-        .from('appointments')
-        .select('total_price, status')
-        .gte('start_time', todayStart)
-        .lte('start_time', todayEnd);
+        .from("appointments")
+        .select("total_price, status")
+        .gte("start_time", todayStart)
+        .lte("start_time", todayEnd);
 
-      const confirmedToday = todayApps?.filter(a => a.status === 'confirmed' || a.status === 'completed').length || 0;
-      const pendingToday = todayApps?.filter(a => a.status === 'pending').length || 0;
-      const todayRevenue = todayApps?.filter(a => a.status === 'completed' || a.status === 'confirmed')
-        .reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0;
+      const confirmedToday =
+        todayApps?.filter((a) => a.status === "confirmed" || a.status === "completed").length || 0;
+      const pendingToday = todayApps?.filter((a) => a.status === "pending").length || 0;
+      const todayRevenue =
+        todayApps
+          ?.filter((a) => a.status === "completed" || a.status === "confirmed")
+          .reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0;
 
       // Fetch total clients
       const { count: clientCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
+        .from("profiles")
+        .select("*", { count: "exact", head: true });
 
       // Fetch last 7 days for charts
       const last7Days = eachDayOfInterval({
         start: subDays(new Date(), 6),
-        end: new Date()
+        end: new Date(),
       });
 
       const { data: weeklyApps } = await supabase
-        .from('appointments')
-        .select('total_price, start_time, status')
-        .gte('start_time', subDays(startOfDay(new Date()), 6).toISOString())
-        .lte('start_time', todayEnd);
+        .from("appointments")
+        .select("total_price, start_time, status")
+        .gte("start_time", subDays(startOfDay(new Date()), 6).toISOString())
+        .lte("start_time", todayEnd);
 
-      const chartDataGenerated = last7Days.map(day => {
-        const dayApps = weeklyApps?.filter(a => isSameDay(new Date(a.start_time), day)) || [];
+      const chartDataGenerated = last7Days.map((day) => {
+        const dayApps = weeklyApps?.filter((a) => isSameDay(new Date(a.start_time), day)) || [];
         const revenue = dayApps
-          .filter(a => a.status === 'completed' || a.status === 'confirmed')
+          .filter((a) => a.status === "completed" || a.status === "confirmed")
           .reduce((acc, curr) => acc + Number(curr.total_price), 0);
-        
+
         return {
           date: format(day, "dd/MM", { locale: ptBR }),
           revenue: revenue,
           count: dayApps.length,
-          fullDate: format(day, "EEEE, dd 'de' MMMM", { locale: ptBR })
+          fullDate: format(day, "EEEE, dd 'de' MMMM", { locale: ptBR }),
         };
       });
 
       setChartData(chartDataGenerated);
 
       setStats([
-        { 
-          label: "Faturamento (Hoje)", 
-          value: `R$ ${todayRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 
-          icon: Wallet, 
-          trend: "+0%", 
-          key: 'revenue' 
+        {
+          label: "Faturamento (Hoje)",
+          value: `R$ ${todayRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+          icon: Wallet,
+          trend: "+0%",
+          key: "revenue",
         },
-        { 
-          label: "Agendamentos", 
-          value: String(confirmedToday), 
+        {
+          label: "Agendamentos",
+          value: String(confirmedToday),
           secondaryValue: pendingToday > 0 ? String(pendingToday) : undefined,
-          icon: Calendar, 
-          trend: "+0", 
-          key: 'appointments' 
+          icon: Calendar,
+          trend: "+0",
+          key: "appointments",
         },
-        { 
-          label: "Novos Clientes", 
-          value: String(clientCount || 0), 
-          icon: Users, 
-          trend: "+0", 
-          key: 'clients' 
+        {
+          label: "Novos Clientes",
+          value: String(clientCount || 0),
+          icon: Users,
+          trend: "+0",
+          key: "clients",
         },
-        { 
-          label: "Faturamento (Mês)", 
-          value: `R$ ${monthRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 
-          icon: TrendingUp, 
-          trend: "+0%", 
-          key: 'monthly' 
+        {
+          label: "Faturamento (Mês)",
+          value: `R$ ${monthRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+          icon: TrendingUp,
+          trend: "+0%",
+          key: "monthly",
         },
       ]);
     } catch (error) {
@@ -211,7 +226,12 @@ function AdminDashboard() {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>;
+  if (loading)
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="animate-spin text-primary" />
+      </div>
+    );
 
   return (
     <div className="space-y-8">
@@ -220,26 +240,30 @@ function AdminDashboard() {
           <h1 className="text-3xl font-serif font-bold">Painel de Resultados</h1>
           <p className="text-muted-foreground">Bem-vindo de volta, aqui está o resumo de hoje.</p>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
             <SelectTrigger className="w-[140px] bg-card border-border/40">
               <SelectValue placeholder="Mês" />
             </SelectTrigger>
             <SelectContent>
-              {months.map(month => (
-                <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+              {months.map((month) => (
+                <SelectItem key={month.value} value={month.value}>
+                  {month.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          
+
           <Select value={selectedYear} onValueChange={setSelectedYear}>
             <SelectTrigger className="w-[100px] bg-card border-border/40">
               <SelectValue placeholder="Ano" />
             </SelectTrigger>
             <SelectContent>
-              {years.map(year => (
-                <SelectItem key={year} value={year}>{year}</SelectItem>
+              {years.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -259,12 +283,17 @@ function AdminDashboard() {
               <div className="flex items-baseline gap-2">
                 <div className="text-2xl font-bold">{stat.value}</div>
                 {stat.secondaryValue && (
-                  <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[10px] px-1.5 py-0">
+                  <Badge
+                    variant="outline"
+                    className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[10px] px-1.5 py-0"
+                  >
                     {stat.secondaryValue} pendentes
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-green-500 mt-1 font-medium">{stat.trend} em relação ao período anterior</p>
+              <p className="text-xs text-green-500 mt-1 font-medium">
+                {stat.trend} em relação ao período anterior
+              </p>
             </CardContent>
           </Card>
         ))}
@@ -283,37 +312,36 @@ function AdminDashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#ffffff40" 
+                  <XAxis
+                    dataKey="date"
+                    stroke="#ffffff40"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                   />
-                  <YAxis 
-                    stroke="#ffffff40" 
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
+                  <YAxis stroke="#ffffff40" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#111",
+                      border: "1px solid #ffffff20",
+                      borderRadius: "8px",
+                    }}
+                    itemStyle={{ color: "#fff" }}
                   />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff20', borderRadius: '8px' }}
-                    itemStyle={{ color: '#fff' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="count" 
+                  <Line
+                    type="monotone"
+                    dataKey="count"
                     name="Agendamentos"
-                    stroke="#e5e7eb" 
+                    stroke="#e5e7eb"
                     strokeWidth={2}
-                    dot={{ fill: '#e5e7eb', r: 4 }}
-                    activeDot={{ r: 6, fill: '#fff' }}
+                    dot={{ fill: "#e5e7eb", r: 4 }}
+                    activeDot={{ r: 6, fill: "#fff" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
-          
+
           <Card className="border-border/40 bg-card/50 min-h-[400px]">
             <CardHeader>
               <CardTitle className="text-lg font-medium flex items-center gap-2">
@@ -325,31 +353,30 @@ function AdminDashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#ffffff40" 
+                  <XAxis
+                    dataKey="date"
+                    stroke="#ffffff40"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                   />
-                  <YAxis 
-                    stroke="#ffffff40" 
+                  <YAxis
+                    stroke="#ffffff40"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(value) => `R$${value}`}
                   />
-                  <Tooltip 
-                    formatter={(value) => [`R$ ${value}`, 'Faturamento']}
-                    contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff20', borderRadius: '8px' }}
-                    itemStyle={{ color: '#D4AF37' }}
+                  <Tooltip
+                    formatter={(value) => [`R$ ${value}`, "Faturamento"]}
+                    contentStyle={{
+                      backgroundColor: "#111",
+                      border: "1px solid #ffffff20",
+                      borderRadius: "8px",
+                    }}
+                    itemStyle={{ color: "#D4AF37" }}
                   />
-                  <Bar 
-                    dataKey="revenue" 
-                    fill="#D4AF37" 
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={50}
-                  />
+                  <Bar dataKey="revenue" fill="#D4AF37" radius={[4, 4, 0, 0]} maxBarSize={50} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -370,15 +397,22 @@ function AdminDashboard() {
               </CardHeader>
               <CardContent className="flex flex-col items-center py-6 text-center">
                 <div className="w-24 h-24 rounded-full border-4 border-primary p-1 mb-4">
-                  <img 
-                    src={bestBarber.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bestBarber.name}`} 
-                    alt={bestBarber.name} 
+                  <img
+                    src={
+                      bestBarber.avatar ||
+                      `https://api.dicebear.com/7.x/avataaars/svg?seed=${bestBarber.name}`
+                    }
+                    alt={bestBarber.name}
                     className="w-full h-full rounded-full object-cover"
                   />
                 </div>
                 <h3 className="text-2xl font-serif font-bold text-white mb-1">{bestBarber.name}</h3>
-                <p className="text-primary font-bold text-sm mb-4">{bestBarber.count} Atendimentos</p>
-                <Badge className="bg-primary text-black font-black uppercase tracking-tighter">Destaque de {months[parseInt(selectedMonth)]?.label || ''}</Badge>
+                <p className="text-primary font-bold text-sm mb-4">
+                  {bestBarber.count} Atendimentos
+                </p>
+                <Badge className="bg-primary text-black font-black uppercase tracking-tighter">
+                  Destaque de {months[parseInt(selectedMonth)]?.label || ""}
+                </Badge>
               </CardContent>
             </Card>
           )}
@@ -394,9 +428,11 @@ function AdminDashboard() {
                 <div key={i} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-primary font-black italic w-4">{i + 1}</span>
-                    <span className="text-sm text-white font-medium">{service.name}</span>
+                    <span className="text-sm text-white font-medium">{service["name"]}</span>
                   </div>
-                  <Badge variant="outline" className="text-[10px] font-bold border-white/10">{service.count}x</Badge>
+                  <Badge variant="outline" className="text-[10px] font-bold border-white/10">
+                    {service["count"]}x
+                  </Badge>
                 </div>
               ))}
             </CardContent>
@@ -417,24 +453,28 @@ function AdminDashboard() {
             <BarChart data={barberRanking} layout="vertical" margin={{ left: 40, right: 40 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" horizontal={false} />
               <XAxis type="number" hide />
-              <YAxis 
-                dataKey="name" 
-                type="category" 
-                stroke="#ffffff40" 
+              <YAxis
+                dataKey="name"
+                type="category"
+                stroke="#ffffff40"
                 fontSize={12}
                 width={100}
                 tickLine={false}
                 axisLine={false}
               />
-              <Tooltip 
-                cursor={{ fill: '#ffffff05' }}
-                contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff20', borderRadius: '8px' }}
-                itemStyle={{ color: '#D4AF37' }}
+              <Tooltip
+                cursor={{ fill: "#ffffff05" }}
+                contentStyle={{
+                  backgroundColor: "#111",
+                  border: "1px solid #ffffff20",
+                  borderRadius: "8px",
+                }}
+                itemStyle={{ color: "#D4AF37" }}
               />
-              <Bar 
-                dataKey="count" 
+              <Bar
+                dataKey="count"
                 name="Atendimentos"
-                fill="#D4AF37" 
+                fill="#D4AF37"
                 radius={[0, 4, 4, 0]}
                 barSize={30}
               />

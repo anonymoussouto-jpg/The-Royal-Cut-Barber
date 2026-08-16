@@ -1,9 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, User, Search, Users, Star, Award, Phone, Calendar as CalendarIcon, Plus } from "lucide-react";
+import {
+  Loader2,
+  User,
+  Search,
+  Users,
+  Star,
+  Award,
+  Phone,
+  Calendar as CalendarIcon,
+  Plus,
+} from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,7 +77,7 @@ function CRMPage() {
         .from("profiles")
         .select("id, full_name, phone, barber_points, created_at")
         .order("created_at", { ascending: false });
-      
+
       if (error) throw error;
       setClients(data || []);
     } catch (error) {
@@ -76,14 +93,16 @@ function CRMPage() {
     try {
       const { data, error } = await supabase
         .from("appointments")
-        .select(`
+        .select(
+          `
           id,
           start_time,
           total_price,
           status,
           services (name),
           barbers (full_name)
-        `)
+        `,
+        )
         .eq("client_id", clientId)
         .order("start_time", { ascending: false })
         .limit(5);
@@ -100,7 +119,7 @@ function CRMPage() {
 
   const handleAddPoints = async () => {
     if (!selectedClient || !pointsToAdd) return;
-    
+
     setIsUpdatingPoints(true);
     try {
       const currentPoints = selectedClient.barber_points || 0;
@@ -126,15 +145,16 @@ function CRMPage() {
   };
 
   const filteredClients = useMemo(() => {
-    return clients.filter(client => 
-      (client.full_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (client.phone || "").includes(searchTerm)
+    return clients.filter(
+      (client) =>
+        (client.full_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (client.phone || "").includes(searchTerm),
     );
   }, [clients, searchTerm]);
 
   const stats = useMemo(() => {
     const total = clients.length;
-    const vips = clients.filter(c => (c.barber_points || 0) > 500).length;
+    const vips = clients.filter((c) => (c.barber_points || 0) > 500).length;
     const totalPoints = clients.reduce((acc, c) => acc + (c.barber_points || 0), 0);
     return { total, vips, totalPoints };
   }, [clients]);
@@ -146,7 +166,6 @@ function CRMPage() {
       </div>
     );
   }
-
 
   return (
     <div className="space-y-8 pb-10">
@@ -186,15 +205,18 @@ function CRMPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{stats.totalPoints} <span className="text-xs font-normal text-muted-foreground uppercase">pts</span></div>
+            <div className="text-2xl font-bold text-white">
+              {stats.totalPoints}{" "}
+              <span className="text-xs font-normal text-muted-foreground uppercase">pts</span>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       <div className="flex items-center gap-4 bg-card/30 p-4 rounded-xl border border-border/20">
         <Search className="w-5 h-5 text-muted-foreground" />
-        <Input 
-          placeholder="Buscar cliente por nome ou telefone..." 
+        <Input
+          placeholder="Buscar cliente por nome ou telefone..."
           className="bg-transparent border-none focus-visible:ring-0 text-white placeholder:text-muted-foreground/50"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -221,8 +243,8 @@ function CRMPage() {
               </TableRow>
             ) : (
               filteredClients.map((client) => (
-                <TableRow 
-                  key={client.id} 
+                <TableRow
+                  key={client.id}
                   className="border-border/40 hover:bg-primary/5 cursor-pointer transition-colors"
                   onClick={() => {
                     setSelectedClient(client);
@@ -236,7 +258,9 @@ function CRMPage() {
                     <span className="text-white">{client.full_name || "Usuário Sem Nome"}</span>
                   </TableCell>
                   <TableCell className="text-white/70">{client.phone || "-"}</TableCell>
-                  <TableCell className="text-white/70">{format(new Date(client.created_at), "dd/MM/yyyy")}</TableCell>
+                  <TableCell className="text-white/70">
+                    {format(new Date(client.created_at), "dd/MM/yyyy")}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-primary">{client.barber_points || 0}</span>
@@ -244,11 +268,13 @@ function CRMPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge className={
-                      (client.barber_points || 0) > 500 
-                        ? "bg-yellow-500/20 text-yellow-500 border-yellow-500/30" 
-                        : "bg-primary/10 text-primary border-primary/20"
-                    }>
+                    <Badge
+                      className={
+                        (client.barber_points || 0) > 500
+                          ? "bg-yellow-500/20 text-yellow-500 border-yellow-500/30"
+                          : "bg-primary/10 text-primary border-primary/20"
+                      }
+                    >
                       {(client.barber_points || 0) > 500 ? "VIP ROYAL" : "MEMBRO"}
                     </Badge>
                   </TableCell>
@@ -269,7 +295,9 @@ function CRMPage() {
                     {selectedClient.full_name?.charAt(0) || "U"}
                   </div>
                   <div>
-                    <SheetTitle className="text-2xl font-serif text-white">{selectedClient.full_name}</SheetTitle>
+                    <SheetTitle className="text-2xl font-serif text-white">
+                      {selectedClient.full_name}
+                    </SheetTitle>
                     <SheetDescription className="text-primary font-medium flex items-center gap-2">
                       <Award className="w-4 h-4" />
                       {selectedClient.barber_points || 0} Barber Points
@@ -282,14 +310,18 @@ function CRMPage() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Telefone</p>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                        Telefone
+                      </p>
                       <div className="flex items-center gap-2 text-white/90">
                         <Phone className="w-3 h-3 text-primary" />
                         {selectedClient.phone || "Não informado"}
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Cliente desde</p>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                        Cliente desde
+                      </p>
                       <div className="flex items-center gap-2 text-white/90">
                         <CalendarIcon className="w-3 h-3 text-primary" />
                         {format(new Date(selectedClient.created_at), "dd/MM/yyyy")}
@@ -305,19 +337,23 @@ function CRMPage() {
                       Gestão de Pontos
                     </h3>
                     <div className="flex gap-2">
-                      <Input 
-                        type="number" 
-                        placeholder="Qtd de pontos..." 
+                      <Input
+                        type="number"
+                        placeholder="Qtd de pontos..."
                         className="bg-white/5 border-border/40 text-white"
                         value={pointsToAdd}
                         onChange={(e) => setPointsToAdd(e.target.value)}
                       />
-                      <Button 
-                        onClick={handleAddPoints} 
+                      <Button
+                        onClick={handleAddPoints}
                         disabled={isUpdatingPoints || !pointsToAdd}
                         className="bg-primary hover:bg-primary/80 text-black font-bold"
                       >
-                        {isUpdatingPoints ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar"}
+                        {isUpdatingPoints ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          "Confirmar"
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -328,20 +364,30 @@ function CRMPage() {
                     <h3 className="text-sm font-bold text-white uppercase tracking-widest">
                       Últimos Agendamentos
                     </h3>
-                    
+
                     {loadingHistory ? (
                       <div className="flex justify-center py-8">
                         <Loader2 className="w-6 h-6 animate-spin text-primary" />
                       </div>
                     ) : history.length === 0 ? (
-                      <p className="text-sm text-muted-foreground italic">Nenhum agendamento encontrado.</p>
+                      <p className="text-sm text-muted-foreground italic">
+                        Nenhum agendamento encontrado.
+                      </p>
                     ) : (
                       <div className="space-y-3">
                         {history.map((app) => (
-                          <div key={app.id} className="p-3 rounded-lg bg-white/5 border border-border/20 space-y-1">
+                          <div
+                            key={app.id}
+                            className="p-3 rounded-lg bg-white/5 border border-border/20 space-y-1"
+                          >
                             <div className="flex justify-between items-start">
-                              <p className="text-sm font-bold text-white">{app.services?.name || "Serviço"}</p>
-                              <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20">
+                              <p className="text-sm font-bold text-white">
+                                {app.services?.name || "Serviço"}
+                              </p>
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] bg-primary/5 text-primary border-primary/20"
+                              >
                                 R$ {Number(app.total_price).toFixed(2)}
                               </Badge>
                             </div>
@@ -356,22 +402,25 @@ function CRMPage() {
                   </div>
                 </div>
               </ScrollArea>
-              
+
               <div className="p-6 mt-auto border-t border-border/20 bg-black/40 space-y-3">
-                <Button 
+                <Button
                   className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl flex items-center justify-center gap-2"
                   onClick={() => {
                     if (selectedClient.phone) {
                       const text = `Olá ${selectedClient.full_name}! Faz um tempo que não te vemos na The Royal Cut. Que tal agendar seu próximo corte? Thiago 🙏`;
-                      window.open(`https://wa.me/55${selectedClient.phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                      window.open(
+                        `https://wa.me/55${selectedClient.phone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`,
+                        "_blank",
+                      );
                     } else toast.error("Telefone não cadastrado");
                   }}
                 >
                   <Phone className="w-5 h-5" />
                   Enviar Mensagem de Reativação
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full border-white/10 text-white/60 hover:text-white h-12 rounded-xl"
                   onClick={() => setSelectedClient(null)}
                 >

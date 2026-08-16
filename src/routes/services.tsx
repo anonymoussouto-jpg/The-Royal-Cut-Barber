@@ -5,11 +5,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, Tag, Scissors, Loader2 } from "lucide-react";
+import { Clock, Tag, Scissors, Loader2, Sparkles } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useBooking } from "@/hooks/use-booking";
 import { StyleGallery } from "@/components/services/StyleGallery";
 
 export const Route = createFileRoute("/services")({
+  head: () => ({
+    title: "Serviços | The Royal Cut",
+    meta: [
+      {
+        name: "description",
+        content: "Confira nossa galeria de serviços premium: do corte clássico à barboterapia tradicional com excelência.",
+      },
+      { property: "og:title", content: "Serviços Premium | The Royal Cut" },
+      {
+        property: "og:description",
+        content: "Onde a tradição encontra o cuidado. Escolha o serviço que melhor reflete sua honra.",
+      },
+    ],
+  }),
   component: ServicesPage,
 });
 
@@ -35,10 +50,7 @@ function ServicesPage() {
 
   const fetchServices = async () => {
     try {
-      const { data, error } = await supabase
-        .from("services")
-        .select("*")
-        .eq("is_active", true);
+      const { data, error } = await supabase.from("services").select("*").eq("is_active", true);
       if (error) throw error;
       setServices(data || []);
     } catch (error) {
@@ -48,17 +60,44 @@ function ServicesPage() {
     }
   };
 
-  const categories = ["Todos", ...Array.from(new Set(services.map(s => s.category).filter(Boolean)))];
-  const filteredServices = activeCategory === "Todos" 
-    ? services 
-    : services.filter(s => s.category === activeCategory);
+  const categories = [
+    "Todos",
+    ...Array.from(new Set(services.map((s) => s.category).filter(Boolean))),
+  ];
+  const filteredServices =
+    activeCategory === "Todos" ? services : services.filter((s) => s.category === activeCategory);
 
-  if (loading) return <div className="flex justify-center py-40 bg-background"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>;
+  if (loading)
+    return (
+      <PublicLayout>
+        <div className="container mx-auto px-6 py-20 min-h-screen">
+          <div className="text-center mb-16">
+            <Skeleton className="h-12 w-64 mx-auto mb-4" />
+            <Skeleton className="h-6 w-96 mx-auto" />
+          </div>
+          <div className="flex justify-center gap-4 mb-12">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-10 w-28 rounded-full" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="space-y-4">
+                <Skeleton className="aspect-[16/9] w-full rounded-xl" />
+                <Skeleton className="h-8 w-3/4" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-10 w-full rounded-lg" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </PublicLayout>
+    );
 
   return (
     <PublicLayout>
       <div className="container mx-auto px-6 py-20 min-h-screen">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-16"
@@ -79,7 +118,9 @@ function ServicesPage() {
               variant={activeCategory === cat ? "default" : "outline"}
               onClick={() => setActiveCategory(cat as string)}
               className={`rounded-full px-8 transition-all duration-300 ${
-                activeCategory === cat ? "bg-primary text-primary-foreground" : "border-border/40 hover:border-primary/50"
+                activeCategory === cat
+                  ? "bg-primary text-primary-foreground"
+                  : "border-border/40 hover:border-primary/50"
               }`}
             >
               {cat}
@@ -99,30 +140,40 @@ function ServicesPage() {
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
               >
-                <Card className="h-full border-border/40 bg-card/50 overflow-hidden hover:border-primary/50 transition-all duration-500 group">
-                  {service.image_url && (
-                    <div className="aspect-[16/9] overflow-hidden">
-                      <img 
-                        src={service.image_url} 
+                <Card className="h-full border-border/40 bg-card/50 overflow-hidden hover:border-primary/50 transition-all duration-500 group flex flex-col">
+                  <div className="aspect-[16/9] overflow-hidden relative bg-zinc-900">
+                    {service.image_url ? (
+                      <img
+                        src={service.image_url}
                         alt={service.name}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
-                    </div>
-                  )}
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-white/20 gap-2">
+                        <Scissors className="w-10 h-10" />
+                        <span className="text-[10px] uppercase font-bold tracking-widest">Premium Service</span>
+                      </div>
+                    )}
+                  </div>
                   <CardHeader>
                     <div className="flex justify-between items-start mb-2">
                       <div className="p-2 rounded-lg bg-primary/10 text-primary">
                         <Scissors className="w-4 h-4" />
                       </div>
-                      <span className="text-2xl font-bold">R$ {Number(service.price).toFixed(2)}</span>
+                      <span className="text-2xl font-bold">
+                        R$ {Number(service.price).toFixed(2)}
+                      </span>
                     </div>
-                    <CardTitle className="text-xl group-hover:text-primary transition-colors">{service.name}</CardTitle>
+                    <CardTitle className="text-xl group-hover:text-primary transition-colors">
+                      {service.name}
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 flex flex-col flex-grow">
                     <p className="text-muted-foreground text-sm line-clamp-3 min-h-[4.5em]">
-                      {service.description || "Uma experiência personalizada de grooming para o cavalheiro moderno."}
+                      {service.description ||
+                        "Uma experiência personalizada de grooming para o cavalheiro moderno."}
                     </p>
-                    <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-muted-foreground mt-auto">
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3 text-primary" />
                         {service.duration_minutes} min
@@ -132,9 +183,9 @@ function ServicesPage() {
                         {service.category}
                       </div>
                     </div>
-                    <Button 
+                    <Button
                       onClick={() => open()}
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold mt-4"
                     >
                       Reservar Agora
                     </Button>

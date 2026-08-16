@@ -1,12 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useRef, useEffect } from "react";
+import { motion } from "framer-motion";
 
 interface BeforeAfterSliderProps {
   beforeImage: string;
   afterImage: string;
 }
 
-export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ beforeImage, afterImage }) => {
+export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
+  beforeImage,
+  afterImage,
+}) => {
   const [sliderPosition, setSliderPosition] = useState(50);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -23,26 +26,22 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ beforeImag
   };
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className="relative w-full aspect-video md:aspect-[16/9] rounded-2xl overflow-hidden cursor-ew-resize select-none border border-white/10"
       onMouseMove={onMouseMove}
       onTouchMove={onTouchMove}
     >
       {/* After Image (Background) */}
-      <img 
-        src={afterImage} 
-        alt="Depois"
-        className="absolute inset-0 w-full h-full object-cover"
-      />
+      <img src={afterImage} alt="Depois" className="absolute inset-0 w-full h-full object-cover" />
 
       {/* Before Image (Overlay) */}
-      <div 
+      <div
         className="absolute inset-0 w-full h-full overflow-hidden"
         style={{ width: `${sliderPosition}%` }}
       >
-        <img 
-          src={beforeImage} 
+        <img
+          src={beforeImage}
           alt="Antes"
           className="absolute inset-0 w-full h-full object-cover"
           style={{ width: `${100 / (sliderPosition / 100)}%` }}
@@ -57,7 +56,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({ beforeImag
       </div>
 
       {/* Slider Handle */}
-      <div 
+      <div
         className="absolute top-0 bottom-0 w-1 bg-primary pointer-events-none"
         style={{ left: `${sliderPosition}%` }}
       >

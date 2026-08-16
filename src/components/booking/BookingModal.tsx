@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useBooking } from '@/hooks/use-booking';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { 
-  Scissors, 
-  User, 
-  Calendar as CalendarIcon, 
-  Clock, 
-  CheckCircle2, 
-  QrCode, 
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useBooking } from "@/hooks/use-booking";
+import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Scissors,
+  User,
+  Calendar as CalendarIcon,
+  Clock,
+  CheckCircle2,
+  QrCode,
   Copy,
   ChevronRight,
   ChevronLeft,
@@ -18,31 +19,34 @@ import {
   Check,
   CreditCard,
   Wallet,
-  MessageSquare
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { toast } from 'sonner';
+  MessageSquare,
+} from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { createAsaasPayment } from "@/lib/payments.functions";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-type Step = 'service' | 'barber' | 'datetime' | 'info' | 'payment_method' | 'payment_pix' | 'payment_card' | 'success';
+type Step =
+  | "service"
+  | "barber"
+  | "datetime"
+  | "info"
+  | "payment_method"
+  | "payment_pix"
+  | "payment_card"
+  | "success";
 
 export function BookingModal() {
   const { isOpen, close, serviceId: initialServiceId, barberId: initialBarberId } = useBooking();
-  const [step, setStep] = useState<Step>('service');
+  const [step, setStep] = useState<Step>("service");
   const [loading, setLoading] = useState(false);
-  
+
   // Data from Supabase
-  const [services, setServices] = useState<any[]>([]);
-  const [barbers, setBarbers] = useState<any[]>([]);
+  const [services, setServices] = useState<Tables<"services">[]>([]);
+  const [barbers, setBarbers] = useState<Tables<"barbers">[]>([]);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [asaasData, setAsaasData] = useState<any>(null);
   const [lastAppointmentId, setLastAppointmentId] = useState<string | null>(null);
@@ -52,42 +56,64 @@ export function BookingModal() {
   const startPaymentFn = useServerFn(createAsaasPayment);
 
   // Selection state
-  const [selectedService, setSelectedService] = useState<any>(null);
-  const [selectedBarber, setSelectedBarber] = useState<any>(null);
+  const [selectedService, setSelectedService] = useState<Tables<"services"> | null>(null);
+  const [selectedBarber, setSelectedBarber] = useState<Tables<"barbers"> | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [clientName, setClientName] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+
+  const fetchBookedSlots = useCallback(async () => {
+    if (!selectedBarber || !selectedDate) return;
+
+    const startOfDay = new Date(selectedDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(selectedDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const { data } = await supabase
+      .from("appointments")
+      .select("start_time")
+      .eq("barber_id", selectedBarber.id)
+      .gte("start_time", startOfDay.toISOString())
+      .lte("start_time", endOfDay.toISOString())
+      .neq("status", "cancelled");
+
+    if (data) {
+      setBookedSlots(data.map((app) => new Date(app.start_time).toISOString()));
+    }
+  }, [selectedBarber, selectedDate]);
 
   useEffect(() => {
     if (isOpen) {
       fetchServices();
       fetchBarbers();
       fetchPixKey();
-      setStep('service');
+      setStep("service");
       // Reset if not starting from a specific service
       if (!initialServiceId) {
         setSelectedService(null);
       }
     }
-  }, [isOpen]);
+  }, [isOpen, initialServiceId]);
 
   useEffect(() => {
     if (initialServiceId && services.length > 0) {
-      const service = services.find(s => s.id === initialServiceId);
+      const service = services.find((s) => s.id === initialServiceId);
       if (service) {
         setSelectedService(service);
-        setStep('barber');
+        setStep("barber");
       }
     }
   }, [initialServiceId, services]);
 
   useEffect(() => {
     if (initialBarberId && barbers.length > 0) {
-      const barber = barbers.find(b => b.id === initialBarberId);
+      const barber = barbers.find((b) => b.id === initialBarberId);
       if (barber) {
         setSelectedBarber(barber);
-        setStep('datetime');
+        setStep("datetime");
       }
     }
   }, [initialBarberId, barbers]);
@@ -96,15 +122,17 @@ export function BookingModal() {
     if (selectedBarber && selectedDate) {
       fetchBookedSlots();
     }
-  }, [selectedBarber, selectedDate]);
+  }, [selectedBarber, selectedDate, fetchBookedSlots]);
+
+  // Removed duplicate fetchBookedSlots declaration
 
   async function fetchServices() {
-    const { data } = await supabase.from('services').select('*');
+    const { data } = await supabase.from("services").select("*");
     if (data) setServices(data);
   }
 
   async function fetchBarbers() {
-    const { data } = await supabase.from('barbers').select('*');
+    const { data } = await supabase.from("barbers").select("*");
     if (data) setBarbers(data);
   }
 
@@ -112,33 +140,24 @@ export function BookingModal() {
     // Pix key is now managed via Asaas creation, no longer pre-fetched
   }
 
-  async function fetchBookedSlots() {
-    if (!selectedBarber || !selectedDate) return;
-    
-    const startOfDay = new Date(selectedDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(selectedDate);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const { data } = await supabase
-      .from('appointments')
-      .select('start_time')
-      .eq('barber_id', selectedBarber.id)
-      .gte('start_time', startOfDay.toISOString())
-      .lte('start_time', endOfDay.toISOString());
-
-    if (data) {
-      setBookedSlots(data.map(a => new Date(a.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })));
-    }
-  }
+  // Duplicate function removed as it was replaced by a useCallback version above
 
   const timeSlots = [
-    '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
+    "09:00",
+    "10:00",
+    "11:00",
+    "13:00",
+    "14:00",
+    "15:00",
+    "16:00",
+    "17:00",
+    "18:00",
+    "19:00",
   ];
 
   useEffect(() => {
     let timer: any;
-    if ((step === 'payment_pix' || step === 'payment_card') && timeLeft > 0 && !isExpired) {
+    if ((step === "payment_pix" || step === "payment_card") && timeLeft > 0 && !isExpired) {
       timer = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
@@ -158,19 +177,19 @@ export function BookingModal() {
     const channel = supabase
       .channel(`appointment-status-${lastAppointmentId}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'appointments',
-          filter: `id=eq.${lastAppointmentId}`
+          event: "UPDATE",
+          schema: "public",
+          table: "appointments",
+          filter: `id=eq.${lastAppointmentId}`,
         },
         (payload) => {
-          if (payload.new['status'] === 'confirmed') {
-            setStep('success');
+          if (payload.new["status"] === "confirmed") {
+            setStep("success");
             toast.success("Pagamento confirmado!");
           }
-        }
+        },
       )
       .subscribe();
 
@@ -182,70 +201,78 @@ export function BookingModal() {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   const handleRegeneratePix = () => {
     setTimeLeft(900);
     setIsExpired(false);
-    handleBooking('PIX');
+    handleBooking("PIX");
   };
 
-  const handleBooking = async (paymentMethod: 'PIX' | 'CREDIT_CARD' | 'IN_PERSON') => {
+  const handleBooking = async (paymentMethod: "PIX" | "CREDIT_CARD" | "IN_PERSON") => {
     setLoading(true);
     try {
       const startTime = new Date(selectedDate!);
-      const [hoursStr, minutesStr] = selectedTime!.split(':');
-      startTime.setHours(parseInt(hoursStr || '0'), parseInt(minutesStr || '0'), 0, 0);
+      const [hoursStr, minutesStr] = selectedTime!.split(":");
+      startTime.setHours(parseInt(hoursStr || "0"), parseInt(minutesStr || "0"), 0, 0);
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       let clientId = user?.id;
 
       if (!clientId) {
         const { data: existingProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('phone', clientPhone)
+          .from("profiles")
+          .select("id")
+          .eq("phone", clientPhone)
           .maybeSingle();
 
         if (existingProfile) {
           clientId = existingProfile.id;
         } else {
           const { data: newProfile, error: profileError } = await supabase
-            .from('profiles')
+            .from("profiles")
             .insert({
               id: crypto.randomUUID(),
               full_name: clientName,
               phone: clientPhone,
-              is_guest: true
+              is_guest: true,
             })
-            .select('id')
+            .select("id")
             .single();
 
           if (profileError) throw profileError;
           clientId = newProfile.id;
         }
       }
-      
-      const { data: appointment, error: appointmentError } = await supabase.from('appointments').insert({
-        service_id: selectedService.id,
-        barber_id: selectedBarber.id,
-        client_id: clientId,
-        client_name: clientName,
-        client_phone: clientPhone,
-        start_time: startTime.toISOString(),
-        total_price: selectedService.price,
-        status: 'pending',
-        // @ts-ignore - payment_method added via migration
-        payment_method: paymentMethod
-      } as any).select('id').single();
+
+      if (!selectedService || !selectedBarber)
+        throw new Error("Serviço ou barbeiro não selecionado");
+
+      const { data: appointment, error: appointmentError } = await supabase
+        .from("appointments")
+        .insert({
+          service_id: selectedService.id,
+          barber_id: selectedBarber.id,
+          client_id: clientId,
+          client_name: clientName,
+          client_phone: clientPhone,
+          start_time: startTime.toISOString(),
+          total_price: selectedService.price,
+          status: "pending",
+          payment_method: paymentMethod,
+        } as any)
+        .select("id")
+        .single();
 
       if (appointmentError) throw appointmentError;
       setLastAppointmentId(appointment.id);
 
-      if (paymentMethod === 'IN_PERSON') {
-        setStep('success');
-        toast.success('Agendamento realizado! Pague no local.');
+      if (paymentMethod === "IN_PERSON") {
+        setStep("success");
+        toast.success("Agendamento realizado! Pague no local.");
         return;
       }
 
@@ -256,16 +283,15 @@ export function BookingModal() {
           amount: selectedService.price,
           customerName: clientName,
           mobilePhone: clientPhone,
-          billingType: paymentMethod as any
-        }
+          billingType: paymentMethod as any,
+        },
       });
 
       setAsaasData(asaasRes);
-      if (paymentMethod === 'PIX') setStep('payment_pix');
-      else if (paymentMethod === 'CREDIT_CARD') setStep('payment_card');
-
-    } catch (error: any) {
-      toast.error('Erro ao agendar: ' + error.message);
+      if (paymentMethod === "PIX") setStep("payment_pix");
+      else if (paymentMethod === "CREDIT_CARD") setStep("payment_card");
+    } catch (error: unknown) {
+      toast.error("Erro ao agendar: " + (error instanceof Error ? error.message : String(error)));
     } finally {
       setLoading(false);
     }
@@ -274,32 +300,33 @@ export function BookingModal() {
   const copyPix = () => {
     if (asaasData?.payload) {
       navigator.clipboard.writeText(asaasData.payload);
-      toast.success('Código PIX copiado!');
+      toast.success("Código PIX copiado!");
     }
   };
 
   const formatPhone = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
+    const numbers = value.replace(/\D/g, "");
     if (numbers.length <= 2) return numbers;
     if (numbers.length <= 6) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-    if (numbers.length <= 10) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`;
+    if (numbers.length <= 10)
+      return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`;
     return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
   };
 
   const steps: { key: Step; label: string; icon: any }[] = [
-    { key: 'service', label: 'Serviço', icon: Scissors },
-    { key: 'barber', label: 'Barbeiro', icon: User },
-    { key: 'datetime', label: 'Data/Hora', icon: CalendarIcon },
-    { key: 'info', label: 'Dados', icon: CheckCircle2 },
-    { key: 'payment_method', label: 'Pagamento', icon: CreditCard },
-    { key: 'success', label: 'Confirmado', icon: Check },
+    { key: "service", label: "Serviço", icon: Scissors },
+    { key: "barber", label: "Barbeiro", icon: User },
+    { key: "datetime", label: "Data/Hora", icon: CalendarIcon },
+    { key: "info", label: "Dados", icon: CheckCircle2 },
+    { key: "payment_method", label: "Pagamento", icon: CreditCard },
+    { key: "success", label: "Confirmado", icon: Check },
   ];
 
-  const currentStepIndex = steps.findIndex(s => s.key === step);
+  const currentStepIndex = steps.findIndex((s) => s.key === step);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="sm:max-w-[500px] w-full h-full sm:h-auto sm:max-h-[90vh] bg-[#0A0A0A] border-white/10 text-white overflow-hidden p-0 flex flex-col">
+      <DialogContent className="sm:max-w-[500px] w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] bg-[#0A0A0A] border-white/10 text-white overflow-hidden p-0 flex flex-col rounded-none sm:rounded-3xl">
         {/* Stepper */}
         <div className="px-6 py-4 bg-white/5 border-b border-white/10 overflow-x-auto no-scrollbar shrink-0">
           {/* Mobile Stepper Simple */}
@@ -311,8 +338,8 @@ export function BookingModal() {
               {steps[currentStepIndex]?.label}
             </span>
             <div className="w-20 h-1 bg-white/10 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-primary transition-all duration-300" 
+              <div
+                className="h-full bg-primary transition-all duration-300"
                 style={{ width: `${((currentStepIndex + 1) / 6) * 100}%` }}
               />
             </div>
@@ -321,22 +348,30 @@ export function BookingModal() {
           <div className="hidden sm:flex items-center justify-between min-w-[400px]">
             {steps.map((s, idx) => {
               const Icon = s.icon;
-              const isCompleted = idx < currentStepIndex || step === 'success';
+              const isCompleted = idx < currentStepIndex || step === "success";
               const isActive = s.key === step;
-              
+
               return (
                 <div key={s.key} className="flex flex-col items-center gap-1.5 flex-1 relative">
                   {idx !== 0 && (
-                    <div className={`absolute right-1/2 w-full h-[2px] -z-10 top-4 ${isCompleted ? 'bg-green-500/50' : 'bg-white/10'}`} />
+                    <div
+                      className={`absolute right-1/2 w-full h-[2px] -z-10 top-4 ${isCompleted ? "bg-green-500/50" : "bg-white/10"}`}
+                    />
                   )}
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                    isCompleted ? 'bg-green-500 text-white' : 
-                    isActive ? 'bg-primary text-primary-foreground ring-4 ring-primary/20' : 
-                    'bg-white/5 text-white/40'
-                  }`}>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                      isCompleted
+                        ? "bg-green-500 text-white"
+                        : isActive
+                          ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                          : "bg-white/5 text-white/40"
+                    }`}
+                  >
                     {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                   </div>
-                  <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? 'text-primary' : 'text-white/40'}`}>
+                  <span
+                    className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? "text-primary" : "text-white/40"}`}
+                  >
                     {s.label}
                   </span>
                 </div>
@@ -347,7 +382,7 @@ export function BookingModal() {
 
         <div className="p-6 flex-grow overflow-y-auto custom-scrollbar">
           <AnimatePresence mode="wait">
-            {step === 'service' && (
+            {step === "service" && (
               <motion.div
                 key="service"
                 initial={{ opacity: 0, x: 20 }}
@@ -370,13 +405,19 @@ export function BookingModal() {
                       key={service.id}
                       onClick={() => {
                         setSelectedService(service);
-                        setStep('barber');
+                        setStep("barber");
                       }}
                       className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 hover:border-primary/50 transition-all text-left group"
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-lg bg-black overflow-hidden">
-                          <img src={service.image_url || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1"} className="w-full h-full object-cover opacity-80" />
+                          <img
+                            src={
+                              service.image_url ||
+                              "https://images.unsplash.com/photo-1503951914875-452162b0f3f1"
+                            }
+                            className="w-full h-full object-cover opacity-80"
+                          />
                         </div>
                         <div>
                           <h3 className="font-bold">{service.name}</h3>
@@ -393,7 +434,7 @@ export function BookingModal() {
               </motion.div>
             )}
 
-            {step === 'barber' && (
+            {step === "barber" && (
               <motion.div
                 key="barber"
                 initial={{ opacity: 0, x: 20 }}
@@ -401,7 +442,12 @@ export function BookingModal() {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-4"
               >
-                <Button variant="ghost" size="sm" onClick={() => setStep('service')} className="text-white/40 hover:text-white -ml-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setStep("service")}
+                  className="text-white/40 hover:text-white -ml-2"
+                >
                   <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
                 </Button>
                 <div className="flex items-center gap-3 mb-6">
@@ -419,25 +465,30 @@ export function BookingModal() {
                       key={barber.id}
                       onClick={() => {
                         setSelectedBarber(barber);
-                        setStep('datetime');
+                        setStep("datetime");
                       }}
                       className="flex flex-col items-center p-6 rounded-2xl border border-white/5 bg-white/5 hover:bg-white/10 hover:border-primary/50 transition-all text-center group"
                     >
                       <div className="w-20 h-20 rounded-full border-2 border-primary/20 p-1 mb-4 group-hover:border-primary/50 transition-all">
-                        <img 
-                          src={barber.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + barber.full_name} 
-                          className="w-full h-full rounded-full object-cover" 
+                        <img
+                          src={
+                            barber.avatar_url ||
+                            "https://api.dicebear.com/7.x/avataaars/svg?seed=" + barber.full_name
+                          }
+                          className="w-full h-full rounded-full object-cover"
                         />
                       </div>
                       <h3 className="font-bold text-sm">{barber.full_name}</h3>
-                      <p className="text-[10px] text-white/40 mt-1 uppercase tracking-wider">Expert Barber</p>
+                      <p className="text-[10px] text-white/40 mt-1 uppercase tracking-wider">
+                        Expert Barber
+                      </p>
                     </button>
                   ))}
                 </div>
               </motion.div>
             )}
 
-            {step === 'datetime' && (
+            {step === "datetime" && (
               <motion.div
                 key="datetime"
                 initial={{ opacity: 0, x: 20 }}
@@ -445,7 +496,12 @@ export function BookingModal() {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-4"
               >
-                <Button variant="ghost" size="sm" onClick={() => setStep('barber')} className="text-white/40 hover:text-white -ml-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setStep("barber")}
+                  className="text-white/40 hover:text-white -ml-2"
+                >
                   <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
                 </Button>
                 <div className="flex items-center gap-3 mb-6">
@@ -457,7 +513,7 @@ export function BookingModal() {
                     <p className="text-xs text-white/50">Selecione o melhor momento</p>
                   </div>
                 </div>
-                
+
                 <div className="grid gap-6">
                   <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
                     <Calendar
@@ -488,10 +544,10 @@ export function BookingModal() {
                               onClick={() => setSelectedTime(time)}
                               className={`w-full py-2 rounded-lg text-xs font-bold transition-all ${
                                 selectedTime === time
-                                  ? 'bg-primary text-primary-foreground'
+                                  ? "bg-primary text-primary-foreground"
                                   : isBooked
-                                  ? 'bg-white/5 text-white/20 cursor-not-allowed line-through'
-                                  : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                                    ? "bg-white/5 text-white/20 cursor-not-allowed line-through"
+                                    : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
                               }`}
                             >
                               {time}
@@ -512,10 +568,10 @@ export function BookingModal() {
                       })}
                     </div>
                   </div>
-                  
-                  <Button 
+
+                  <Button
                     disabled={!selectedTime}
-                    onClick={() => setStep('info')}
+                    onClick={() => setStep("info")}
                     className="w-full bg-primary text-primary-foreground h-12 rounded-xl font-bold"
                   >
                     Continuar
@@ -524,7 +580,7 @@ export function BookingModal() {
               </motion.div>
             )}
 
-            {step === 'info' && (
+            {step === "info" && (
               <motion.div
                 key="info"
                 initial={{ opacity: 0, x: 20 }}
@@ -532,7 +588,12 @@ export function BookingModal() {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-4"
               >
-                <Button variant="ghost" size="sm" onClick={() => setStep('datetime')} className="text-white/40 hover:text-white -ml-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setStep("datetime")}
+                  className="text-white/40 hover:text-white -ml-2"
+                >
                   <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
                 </Button>
                 <div className="flex items-center gap-3 mb-6">
@@ -541,14 +602,18 @@ export function BookingModal() {
                   </div>
                   <div>
                     <h2 className="text-xl font-bold font-serif">Seus Dados</h2>
-                    <p className="text-xs text-white/50">Quase lá! Só precisamos saber quem você é.</p>
+                    <p className="text-xs text-white/50">
+                      Quase lá! Só precisamos saber quem você é.
+                    </p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Nome Completo</label>
-                    <input 
+                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">
+                      Nome Completo
+                    </label>
+                    <input
                       value={clientName}
                       onChange={(e) => setClientName(e.target.value)}
                       placeholder="Ex: João Silva"
@@ -556,17 +621,21 @@ export function BookingModal() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">WhatsApp</label>
-                    <input 
+                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest">
+                      WhatsApp
+                    </label>
+                    <input
                       value={clientPhone}
                       onChange={(e) => setClientPhone(formatPhone(e.target.value))}
                       placeholder="(00) 00000-0000"
                       className="w-full bg-white/5 border border-white/10 rounded-xl h-12 px-4 focus:border-primary outline-none transition-all"
                     />
                   </div>
-                  
+
                   <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 mt-6">
-                    <h4 className="text-xs font-bold text-primary uppercase tracking-widest mb-3">Resumo</h4>
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-widest mb-3">
+                      Resumo
+                    </h4>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-white/40">Serviço:</span>
                       <span className="font-bold">{selectedService?.name}</span>
@@ -577,13 +646,16 @@ export function BookingModal() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-white/40">Data/Hora:</span>
-                      <span className="font-bold">{selectedDate ? format(selectedDate, "dd/MM 'às' ", { locale: ptBR }) : ''} {selectedTime}</span>
+                      <span className="font-bold">
+                        {selectedDate ? format(selectedDate, "dd/MM 'às' ", { locale: ptBR }) : ""}{" "}
+                        {selectedTime}
+                      </span>
                     </div>
                   </div>
 
-                  <Button 
+                  <Button
                     disabled={!clientName || !clientPhone}
-                    onClick={() => setStep('payment_method')}
+                    onClick={() => setStep("payment_method")}
                     className="w-full bg-primary text-primary-foreground h-12 rounded-xl font-bold"
                   >
                     Ir para o Pagamento
@@ -592,7 +664,7 @@ export function BookingModal() {
               </motion.div>
             )}
 
-            {step === 'payment_method' && (
+            {step === "payment_method" && (
               <motion.div
                 key="payment_method"
                 initial={{ opacity: 0, x: 20 }}
@@ -611,8 +683,8 @@ export function BookingModal() {
                 </div>
 
                 <div className="grid gap-3">
-                  <Button 
-                    onClick={() => handleBooking('PIX')}
+                  <Button
+                    onClick={() => handleBooking("PIX")}
                     disabled={loading}
                     className="h-16 justify-start gap-4 bg-white/5 border-white/10 hover:bg-white/10 hover:border-primary/50 text-white"
                   >
@@ -623,8 +695,8 @@ export function BookingModal() {
                     </div>
                   </Button>
 
-                  <Button 
-                    onClick={() => handleBooking('CREDIT_CARD')}
+                  <Button
+                    onClick={() => handleBooking("CREDIT_CARD")}
                     disabled={loading}
                     className="h-16 justify-start gap-4 bg-white/5 border-white/10 hover:bg-white/10 hover:border-primary/50 text-white"
                   >
@@ -635,8 +707,8 @@ export function BookingModal() {
                     </div>
                   </Button>
 
-                  <Button 
-                    onClick={() => handleBooking('IN_PERSON')}
+                  <Button
+                    onClick={() => handleBooking("IN_PERSON")}
                     disabled={loading}
                     className="h-16 justify-start gap-4 bg-white/5 border-white/10 hover:bg-white/10 hover:border-primary/50 text-white"
                   >
@@ -651,13 +723,15 @@ export function BookingModal() {
                 {loading && (
                   <div className="flex items-center justify-center gap-2 pt-4">
                     <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    <span className="text-xs text-white/40 uppercase tracking-widest font-bold">Processando cobrança...</span>
+                    <span className="text-xs text-white/40 uppercase tracking-widest font-bold">
+                      Processando cobrança...
+                    </span>
                   </div>
                 )}
               </motion.div>
             )}
 
-            {step === 'payment_pix' && (
+            {step === "payment_pix" && (
               <motion.div
                 key="payment_pix"
                 initial={{ opacity: 0, y: 20 }}
@@ -666,14 +740,22 @@ export function BookingModal() {
               >
                 <div className="space-y-2">
                   <h3 className="text-xl font-bold text-primary font-serif">Escaneie o PIX</h3>
-                  <p className="text-xs text-white/50">Pague agora para confirmar seu horário automaticamente.</p>
+                  <p className="text-xs text-white/50">
+                    Pague agora para confirmar seu horário automaticamente.
+                  </p>
                 </div>
-                
+
                 <div className="bg-white p-4 rounded-3xl w-48 h-48 mx-auto shadow-2xl shadow-primary/20">
                   {asaasData?.encodedImage ? (
-                    <img src={`data:image/png;base64,${asaasData.encodedImage}`} alt="QR PIX" className="w-full h-full" />
+                    <img
+                      src={`data:image/png;base64,${asaasData.encodedImage}`}
+                      alt="QR PIX"
+                      className="w-full h-full"
+                    />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-black">QR Indisponível</div>
+                    <div className="w-full h-full flex items-center justify-center text-black">
+                      QR Indisponível
+                    </div>
                   )}
                 </div>
 
@@ -681,8 +763,10 @@ export function BookingModal() {
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
                     {isExpired ? (
                       <div className="space-y-3">
-                        <p className="text-red-400 text-xs font-bold uppercase tracking-widest">Código expirado — gere um novo PIX</p>
-                        <Button 
+                        <p className="text-red-400 text-xs font-bold uppercase tracking-widest">
+                          Código expirado — gere um novo PIX
+                        </p>
+                        <Button
                           onClick={handleRegeneratePix}
                           className="w-full bg-primary text-black font-bold h-10 rounded-xl"
                         >
@@ -691,25 +775,31 @@ export function BookingModal() {
                       </div>
                     ) : (
                       <div className="space-y-1">
-                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Expira em</p>
-                        <p className="text-2xl font-mono font-bold text-primary">⏱️ {formatTime(timeLeft)}</p>
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">
+                          Expira em
+                        </p>
+                        <p className="text-2xl font-mono font-bold text-primary">
+                          ⏱️ {formatTime(timeLeft)}
+                        </p>
                       </div>
                     )}
                   </div>
 
                   {!isExpired && (
                     <>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={copyPix}
                         className="w-full border-white/10 bg-white/5 h-12 rounded-xl text-white hover:bg-white/10"
                       >
                         <Copy className="w-4 h-4 mr-2" /> Copiar Código Copia e Cola
                       </Button>
-                      
+
                       <div className="flex items-center justify-center gap-2 pt-2">
                         <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                        <span className="text-[10px] text-white/20 uppercase tracking-widest font-bold">Aguardando confirmação em tempo real...</span>
+                        <span className="text-[10px] text-white/20 uppercase tracking-widest font-bold">
+                          Aguardando confirmação em tempo real...
+                        </span>
                       </div>
                     </>
                   )}
@@ -717,7 +807,7 @@ export function BookingModal() {
               </motion.div>
             )}
 
-            {step === 'payment_card' && (
+            {step === "payment_card" && (
               <motion.div
                 key="payment_card"
                 initial={{ opacity: 0, y: 20 }}
@@ -725,22 +815,31 @@ export function BookingModal() {
                 className="text-center space-y-6"
               >
                 <h3 className="text-xl font-bold text-primary font-serif">Finalize no Cartão</h3>
-                <p className="text-xs text-white/50 px-8">Clique no botão abaixo para abrir o ambiente seguro de pagamento do Asaas.</p>
-                
+                <p className="text-xs text-white/50 px-8">
+                  Clique no botão abaixo para abrir o ambiente seguro de pagamento do Asaas.
+                </p>
+
                 <div className="px-4">
-                  <Button asChild className="w-full h-12 bg-primary text-black font-bold rounded-xl">
-                    <a href={asaasData?.invoiceUrl} target="_blank" rel="noopener noreferrer">Abrir Checkout Asaas</a>
+                  <Button
+                    asChild
+                    className="w-full h-12 bg-primary text-black font-bold rounded-xl"
+                  >
+                    <a href={asaasData?.invoiceUrl} target="_blank" rel="noopener noreferrer">
+                      Abrir Checkout Asaas
+                    </a>
                   </Button>
                 </div>
-                
+
                 <div className="flex items-center justify-center gap-2 pt-6">
                   <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                  <span className="text-[10px] text-white/20 uppercase tracking-widest font-bold">Monitorando pagamento...</span>
+                  <span className="text-[10px] text-white/20 uppercase tracking-widest font-bold">
+                    Monitorando pagamento...
+                  </span>
                 </div>
               </motion.div>
             )}
 
-            {step === 'success' && (
+            {step === "success" && (
               <motion.div
                 key="success"
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -758,21 +857,27 @@ export function BookingModal() {
                 </div>
                 <h2 className="text-3xl font-bold font-serif mb-4">Agendado!</h2>
                 <p className="text-white/50 mb-8 max-w-[300px]">
-                  Sua experiência na The Royal Cut está confirmada. Enviamos os detalhes para seu WhatsApp.
+                  Sua experiência na The Royal Cut está confirmada. Enviamos os detalhes para seu
+                  WhatsApp.
                 </p>
                 <div className="flex flex-col gap-3 w-full max-w-[300px]">
-                  <Button 
+                  <Button
                     onClick={() => {
-                      const date = selectedDate ? format(selectedDate, "dd/MM", { locale: ptBR }) : "";
-                      const text = `Olá ${clientName}! Seu agendamento na The Royal Cut foi confirmado! ✅ Serviço: ${selectedService?.name} | Data: ${date} às ${selectedTime} | Barbeiro: ${selectedBarber?.full_name}. Até lá! ✂️`;
-                      window.open(`https://wa.me/55${clientPhone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                      const date = selectedDate
+                        ? format(selectedDate, "dd/MM", { locale: ptBR })
+                        : "";
+                      const text = `Olá ${clientName}! Seu agendamento na The Royal Cut foi confirmado! ✅ Serviço: ${selectedService?.name} | Barbeiro: ${selectedBarber?.full_name}. Até lá! ✂️`;
+                      window.open(
+                        `https://wa.me/55${clientPhone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`,
+                        "_blank",
+                      );
                     }}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl flex items-center justify-center gap-2"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-green-900/20 transition-all active:scale-[0.98]"
                   >
                     <MessageSquare className="w-5 h-5" />
                     Enviar confirmação no WhatsApp
                   </Button>
-                  <Button 
+                  <Button
                     onClick={close}
                     className="w-full bg-primary text-primary-foreground h-12 rounded-xl font-bold"
                   >

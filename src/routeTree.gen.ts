@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as R404RouteImport } from './routes/404'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as BarberRouteImport } from './routes/barber'
 import { Route as LoginRouteImport } from './routes/login'
@@ -37,6 +38,11 @@ import { Route as ApiPublicAsaasWebhookRouteImport } from './routes/api/public/a
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const R404Route = R404RouteImport.update({
+  id: '/404',
+  path: '/404',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -157,6 +163,7 @@ const ApiPublicAsaasWebhookRoute = ApiPublicAsaasWebhookRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/404': typeof R404Route
   '/admin': typeof AdminRouteWithChildren
   '/barber': typeof BarberRouteWithChildren
   '/login': typeof LoginRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/404': typeof R404Route
   '/barber': typeof BarberRouteWithChildren
   '/login': typeof LoginRoute
   '/membership': typeof MembershipRoute
@@ -209,6 +217,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/404': typeof R404Route
   '/admin': typeof AdminRouteWithChildren
   '/barber': typeof BarberRouteWithChildren
   '/login': typeof LoginRoute
@@ -237,6 +246,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/404'
     | '/admin'
     | '/barber'
     | '/login'
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/404'
     | '/barber'
     | '/login'
     | '/membership'
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/404'
     | '/admin'
     | '/barber'
     | '/login'
@@ -315,6 +327,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  R404Route: typeof R404Route
   AdminRoute: typeof AdminRouteWithChildren
   BarberRoute: typeof BarberRouteWithChildren
   LoginRoute: typeof LoginRoute
@@ -333,6 +346,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/404': {
+      id: '/404'
+      path: '/404'
+      fullPath: '/404'
+      preLoaderRoute: typeof R404RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -546,6 +566,7 @@ const BarberRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  R404Route: R404Route,
   AdminRoute: AdminRouteWithChildren,
   BarberRoute: BarberRouteWithChildren,
   LoginRoute: LoginRoute,

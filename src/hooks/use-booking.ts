@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 
 interface BookingStore {
   isOpen: boolean;
@@ -12,6 +12,7 @@ export const useBooking = create<BookingStore>((set) => ({
   isOpen: false,
   serviceId: null,
   barberId: null,
-  open: (serviceId, barberId) => set({ isOpen: true, serviceId: serviceId || null, barberId: barberId || null }),
+  open: (serviceId, barberId) =>
+    set({ isOpen: true, serviceId: serviceId || null, barberId: barberId || null }),
   close: () => set({ isOpen: false, serviceId: null, barberId: null }),
 }));

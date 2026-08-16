@@ -6,7 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit2, User, Loader2, Key, ShieldCheck, Mail, ImageIcon, Scissors } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Edit2,
+  User,
+  Loader2,
+  Key,
+  ShieldCheck,
+  Mail,
+  ImageIcon,
+  Scissors,
+} from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { createBarberUser } from "@/lib/barbers.functions";
 import {
@@ -40,7 +51,7 @@ function StaffManagement() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBarber, setEditingBarber] = useState<Barber | null>(null);
-  
+
   const [viewingTransformations, setViewingTransformations] = useState<string | null>(null);
   const [barberTransformations, setBarberTransformations] = useState<any[]>([]);
   const [loadingTransformations, setLoadingTransformations] = useState(false);
@@ -67,10 +78,10 @@ function StaffManagement() {
         transformations:transformations(count)
       `);
       if (error) throw error;
-      
+
       const formatted = data.map((b: any) => ({
         ...b,
-        transformations_count: b.transformations?.[0]?.count || 0
+        transformations_count: b.transformations?.[0]?.count || 0,
       }));
 
       setBarbers(formatted || []);
@@ -88,7 +99,10 @@ function StaffManagement() {
       const data = {
         full_name: formData.full_name,
         bio: formData.bio,
-        specialties: formData.specialties.split(",").map(s => s.trim()).filter(Boolean),
+        specialties: formData.specialties
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
       };
 
       if (editingBarber) {
@@ -123,8 +137,8 @@ function StaffManagement() {
         data: {
           barberId: editingBarber.id,
           email: formData.email,
-          password: formData.password
-        }
+          password: formData.password,
+        },
       });
       toast.success("Acesso criado com sucesso!");
       fetchBarbers();
@@ -195,10 +209,13 @@ function StaffManagement() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-primary text-primary-foreground" onClick={() => {
-              setEditingBarber(null);
-              setFormData({ full_name: "", bio: "", specialties: "", email: "", password: "" });
-            }}>
+            <Button
+              className="bg-primary text-primary-foreground"
+              onClick={() => {
+                setEditingBarber(null);
+                setFormData({ full_name: "", bio: "", specialties: "", email: "", password: "" });
+              }}
+            >
               <Plus className="w-4 h-4 mr-2" /> Novo Barbeiro
             </Button>
           </DialogTrigger>
@@ -241,9 +258,11 @@ function StaffManagement() {
                 <div className="pt-6 border-t border-border space-y-4">
                   <div className="flex items-center gap-2 mb-2">
                     <ShieldCheck className="w-4 h-4 text-primary" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Acesso ao Sistema</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-primary">
+                      Acesso ao Sistema
+                    </h3>
                   </div>
-                  
+
                   {editingBarber.auth_user_id ? (
                     <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl flex items-center gap-3">
                       <ShieldCheck className="w-5 h-5 text-green-500" />
@@ -256,7 +275,9 @@ function StaffManagement() {
                     <>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <Label htmlFor="email" className="text-[10px] uppercase">Email de Login</Label>
+                          <Label htmlFor="email" className="text-[10px] uppercase">
+                            Email de Login
+                          </Label>
                           <Input
                             id="email"
                             type="email"
@@ -267,7 +288,9 @@ function StaffManagement() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label htmlFor="pass" className="text-[10px] uppercase">Senha Temp.</Label>
+                          <Label htmlFor="pass" className="text-[10px] uppercase">
+                            Senha Temp.
+                          </Label>
                           <Input
                             id="pass"
                             type="password"
@@ -278,14 +301,18 @@ function StaffManagement() {
                           />
                         </div>
                       </div>
-                      <Button 
-                        type="button" 
-                        variant="outline" 
+                      <Button
+                        type="button"
+                        variant="outline"
                         className="w-full border-primary/20 hover:bg-primary/5 text-primary h-9 text-xs font-bold"
                         onClick={handleCreateAccess}
                         disabled={creatingAccess}
                       >
-                        {creatingAccess ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Key className="w-3 h-3 mr-2" />}
+                        {creatingAccess ? (
+                          <Loader2 className="w-3 h-3 animate-spin mr-2" />
+                        ) : (
+                          <Key className="w-3 h-3 mr-2" />
+                        )}
                         Criar Acesso ao Sistema
                       </Button>
                     </>
@@ -294,7 +321,10 @@ function StaffManagement() {
               )}
 
               <DialogFooter className="pt-4">
-                <Button type="submit" className="bg-primary text-primary-foreground w-full sm:w-auto">
+                <Button
+                  type="submit"
+                  className="bg-primary text-primary-foreground w-full sm:w-auto"
+                >
                   {editingBarber ? "Salvar Perfil" : "Cadastrar Profissional"}
                 </Button>
               </DialogFooter>
@@ -305,20 +335,37 @@ function StaffManagement() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {barbers.map((barber) => (
-          <div key={barber.id} className="p-6 rounded-2xl border border-border/40 bg-card/50 relative group transition-all hover:border-primary/20">
+          <div
+            key={barber.id}
+            className="p-6 rounded-2xl border border-border/40 bg-card/50 relative group transition-all hover:border-primary/20"
+          >
             <div className="flex justify-between items-start mb-4">
               <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border border-primary/20">
                 {barber.avatar_url ? (
-                  <img src={barber.avatar_url} alt={barber.full_name} className="w-full h-full object-cover" />
+                  <img
+                    src={barber.avatar_url}
+                    alt={barber.full_name}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <User className="w-8 h-8 text-primary" />
                 )}
               </div>
               <div className="flex gap-2">
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(barber)} className="hover:bg-primary/10">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleEdit(barber)}
+                  className="hover:bg-primary/10"
+                >
                   <Edit2 className="w-4 h-4 text-muted-foreground" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(barber.id)} className="hover:bg-destructive/10">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDelete(barber.id)}
+                  className="hover:bg-destructive/10"
+                >
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </Button>
               </div>
@@ -329,22 +376,28 @@ function StaffManagement() {
                 {barber.specialties?.join(", ") || "Barbeiro Especialista"}
               </p>
             </div>
-            
+
             <div className="mt-6 flex flex-wrap gap-2">
-              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[10px] font-bold uppercase py-0.5">
+              <Badge
+                variant="outline"
+                className="bg-primary/5 text-primary border-primary/20 text-[10px] font-bold uppercase py-0.5"
+              >
                 Ativo
               </Badge>
               {barber.auth_user_id && (
-                <Badge variant="outline" className="bg-green-500/5 text-green-500 border-green-500/20 text-[10px] font-bold uppercase py-0.5 flex items-center gap-1">
+                <Badge
+                  variant="outline"
+                  className="bg-green-500/5 text-green-500 border-green-500/20 text-[10px] font-bold uppercase py-0.5 flex items-center gap-1"
+                >
                   <ShieldCheck className="w-3 h-3" /> Acesso Ativo
                 </Badge>
               )}
             </div>
 
             <div className="mt-4 pt-4 border-t border-white/5">
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => openTransformations(barber.id)}
                 className="w-full justify-start text-[10px] font-black uppercase tracking-widest text-primary/60 hover:text-primary hover:bg-primary/5 p-0 h-auto"
               >
@@ -357,12 +410,15 @@ function StaffManagement() {
       </div>
 
       {/* Transformations Modal */}
-      <Dialog open={!!viewingTransformations} onOpenChange={(open) => !open && setViewingTransformations(null)}>
+      <Dialog
+        open={!!viewingTransformations}
+        onOpenChange={(open) => !open && setViewingTransformations(null)}
+      >
         <DialogContent className="bg-zinc-950 border-white/10 max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-serif">Galeria de Transformações</DialogTitle>
           </DialogHeader>
-          
+
           {loadingTransformations ? (
             <div className="py-20 flex justify-center">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -375,7 +431,7 @@ function StaffManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
               {barberTransformations.map((t) => (
                 <div key={t.id} className="space-y-3">
-                  <BeforeAfterSlider 
+                  <BeforeAfterSlider
                     beforeImage={t.before_image_url}
                     afterImage={t.after_image_url}
                   />
@@ -384,7 +440,9 @@ function StaffManagement() {
                       {t.style_tag || "Geral"}
                     </span>
                     {t.is_highlighted && (
-                      <Badge className="bg-yellow-500 text-black text-[9px] font-black uppercase">Destaque</Badge>
+                      <Badge className="bg-yellow-500 text-black text-[9px] font-black uppercase">
+                        Destaque
+                      </Badge>
                     )}
                   </div>
                 </div>

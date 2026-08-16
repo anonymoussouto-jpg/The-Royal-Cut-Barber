@@ -5,16 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { 
-  Plus, 
-  Trash2, 
-  Image as ImageIcon, 
-  Loader2, 
-  Upload, 
+import {
+  Plus,
+  Trash2,
+  Image as ImageIcon,
+  Loader2,
+  Upload,
   Star,
   CheckCircle2,
   AlertCircle,
-  X
+  X,
 } from "lucide-react";
 import {
   Dialog,
@@ -46,7 +46,7 @@ function BarberPhotos() {
   const [barber, setBarber] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
-  
+
   const [beforeFile, setBeforeFile] = useState<File | null>(null);
   const [afterFile, setAfterFile] = useState<File | null>(null);
   const [styleTag, setStyleTag] = useState("");
@@ -57,7 +57,9 @@ function BarberPhotos() {
 
   const fetchBarberAndPhotos = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data: barberData } = await supabase
@@ -86,19 +88,19 @@ function BarberPhotos() {
   };
 
   const uploadImage = async (file: File) => {
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split(".").pop();
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `${barber.id}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('transformations')
+      .from("transformations")
       .upload(filePath, file);
 
     if (uploadError) throw uploadError;
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('transformations')
-      .getPublicUrl(filePath);
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("transformations").getPublicUrl(filePath);
 
     return publicUrl;
   };
@@ -121,8 +123,8 @@ function BarberPhotos() {
           before_image_url: beforeUrl,
           after_image_url: afterUrl,
           style_tag: styleTag || "Geral",
-          is_highlighted: false
-        }
+          is_highlighted: false,
+        },
       ]);
 
       if (error) throw error;
@@ -146,12 +148,12 @@ function BarberPhotos() {
 
     try {
       // Extract paths for storage deletion
-      const getPath = (url: string) => url.split('transformations/').pop();
+      const getPath = (url: string) => url.split("transformations/").pop();
       const beforeRes = getPath(beforeUrl);
       const afterRes = getPath(afterUrl);
 
       if (beforeRes && afterRes) {
-        await supabase.storage.from('transformations').remove([beforeRes, afterRes]);
+        await supabase.storage.from("transformations").remove([beforeRes, afterRes]);
       }
 
       const { error } = await supabase.from("transformations").delete().eq("id", id);
@@ -166,8 +168,8 @@ function BarberPhotos() {
   };
 
   const toggleHighlight = async (photo: Transformation) => {
-    const highlightedCount = transformations.filter(t => t.is_highlighted).length;
-    
+    const highlightedCount = transformations.filter((t) => t.is_highlighted).length;
+
     if (!photo.is_highlighted && highlightedCount >= 3) {
       toast.error("Você já possui 3 fotos em destaque. Remova uma para destacar esta.");
       return;
@@ -215,38 +217,50 @@ function BarberPhotos() {
             <form onSubmit={handleAddTransformation} className="space-y-6 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs uppercase tracking-widest text-white/50">Foto Antes</Label>
+                  <Label className="text-xs uppercase tracking-widest text-white/50">
+                    Foto Antes
+                  </Label>
                   <div className="relative aspect-square rounded-xl border-2 border-dashed border-white/10 hover:border-primary/50 transition-colors bg-white/5 overflow-hidden group">
                     {beforeFile ? (
-                      <img src={URL.createObjectURL(beforeFile)} className="w-full h-full object-cover" alt="Preview Antes" />
+                      <img
+                        src={URL.createObjectURL(beforeFile)}
+                        className="w-full h-full object-cover"
+                        alt="Preview Antes"
+                      />
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-white/30 text-[10px] gap-2">
                         <Upload className="w-6 h-6" />
                         <span>UPLOAD ANTES</span>
                       </div>
                     )}
-                    <input 
-                      type="file" 
-                      accept="image/*" 
+                    <input
+                      type="file"
+                      accept="image/*"
                       className="absolute inset-0 opacity-0 cursor-pointer"
                       onChange={(e) => setBeforeFile(e.target.files?.[0] || null)}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs uppercase tracking-widest text-white/50">Foto Depois</Label>
+                  <Label className="text-xs uppercase tracking-widest text-white/50">
+                    Foto Depois
+                  </Label>
                   <div className="relative aspect-square rounded-xl border-2 border-dashed border-white/10 hover:border-primary/50 transition-colors bg-white/5 overflow-hidden group">
                     {afterFile ? (
-                      <img src={URL.createObjectURL(afterFile)} className="w-full h-full object-cover" alt="Preview Depois" />
+                      <img
+                        src={URL.createObjectURL(afterFile)}
+                        className="w-full h-full object-cover"
+                        alt="Preview Depois"
+                      />
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-white/30 text-[10px] gap-2">
                         <Upload className="w-6 h-6" />
                         <span>UPLOAD DEPOIS</span>
                       </div>
                     )}
-                    <input 
-                      type="file" 
-                      accept="image/*" 
+                    <input
+                      type="file"
+                      accept="image/*"
                       className="absolute inset-0 opacity-0 cursor-pointer"
                       onChange={(e) => setAfterFile(e.target.files?.[0] || null)}
                     />
@@ -255,7 +269,9 @@ function BarberPhotos() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tag" className="text-xs uppercase tracking-widest text-white/50">Tag de Estilo</Label>
+                <Label htmlFor="tag" className="text-xs uppercase tracking-widest text-white/50">
+                  Tag de Estilo
+                </Label>
                 <Input
                   id="tag"
                   placeholder="Ex: Fade, Barba, Clássico..."
@@ -266,12 +282,16 @@ function BarberPhotos() {
               </div>
 
               <DialogFooter>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={uploading}
                   className="w-full bg-primary text-primary-foreground font-bold h-12 rounded-xl"
                 >
-                  {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Salvar Transformação"}
+                  {uploading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    "Salvar Transformação"
+                  )}
                 </Button>
               </DialogFooter>
             </form>
@@ -286,7 +306,9 @@ function BarberPhotos() {
           </div>
           <div>
             <h2 className="font-bold text-lg">Suas Fotos em Destaque</h2>
-            <p className="text-xs text-white/40">Você pode escolher até 3 fotos para aparecerem na página inicial.</p>
+            <p className="text-xs text-white/40">
+              Você pode escolher até 3 fotos para aparecerem na página inicial.
+            </p>
           </div>
         </div>
 
@@ -298,40 +320,42 @@ function BarberPhotos() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {transformations.map((photo) => (
-              <div 
-                key={photo.id} 
+              <div
+                key={photo.id}
                 className="group relative flex flex-col bg-zinc-900 rounded-2xl overflow-hidden border border-white/10 hover:border-primary/30 transition-all"
               >
                 <div className="relative aspect-video overflow-hidden">
-                  <BeforeAfterSlider 
+                  <BeforeAfterSlider
                     beforeImage={photo.before_image_url}
                     afterImage={photo.after_image_url}
                   />
                 </div>
-                
+
                 <div className="p-4 flex items-center justify-between bg-zinc-950/50 backdrop-blur-sm">
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
                       {photo.style_tag || "Estilo Livre"}
                     </span>
                     <span className="text-[10px] text-white/30 uppercase">
-                      {new Date(photo.created_at).toLocaleDateString('pt-BR')}
+                      {new Date(photo.created_at).toLocaleDateString("pt-BR")}
                     </span>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => toggleHighlight(photo)}
                       className={`h-9 w-9 rounded-full ${photo.is_highlighted ? "text-yellow-500 bg-yellow-500/10" : "text-white/20 hover:text-white"}`}
                     >
                       <Star className={`w-4 h-4 ${photo.is_highlighted ? "fill-current" : ""}`} />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDelete(photo.id, photo.before_image_url, photo.after_image_url)}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() =>
+                        handleDelete(photo.id, photo.before_image_url, photo.after_image_url)
+                      }
                       className="h-9 w-9 rounded-full text-white/20 hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="w-4 h-4" />

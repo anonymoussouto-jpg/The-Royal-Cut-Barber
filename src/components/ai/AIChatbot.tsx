@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { QrCode, CreditCard, Wallet, MessageSquare, X, Send, Sparkles, Loader2 } from "lucide-react";
+import {
+  QrCode,
+  CreditCard,
+  Wallet,
+  MessageSquare,
+  X,
+  Send,
+  Sparkles,
+  Loader2,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +22,18 @@ export function AIChatbot() {
   const { isOpen, open, close } = useChatbot();
   const [showBubble, setShowBubble] = useState(true);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<{ role: "assistant" | "user" | "system"; content: string; metadata?: any | null }[]>([
-    { role: "assistant", content: "Olá, seja bem-vindo à The Royal Cut, a barbearia do Thiago. Como posso servir você hoje?" }
+  const [messages, setMessages] = useState<
+    {
+      role: "assistant" | "user" | "system";
+      content: string;
+      metadata?: Record<string, any> | null;
+    }[]
+  >([
+    {
+      role: "assistant",
+      content:
+        "Olá, seja bem-vindo à The Royal Cut, a barbearia do Thiago. Como posso servir você hoje?",
+    },
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -37,33 +56,49 @@ export function AIChatbot() {
   const handleSend = async (textOverride?: string) => {
     const textToSend = textOverride || message;
     if (!textToSend.trim() || isTyping) return;
-    
+
     const userMessage = { role: "user" as const, content: textToSend };
     const newMessages = [...messages, userMessage];
-    
+
     setMessages(newMessages);
     setMessage("");
     setIsTyping(true);
 
     try {
-      const response = await sendMessage({
+      const responsePromise = sendMessage({
         data: {
-          messages: newMessages.map(m => ({ role: m.role, content: m.content }))
-        }
+          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+        },
       });
 
-      setMessages(prev => [...prev, { 
-        role: "assistant" as const, 
-        content: response.content || "Desculpe, não consegui processar sua solicitação.",
-        metadata: response.metadata
-      }]);
-    } catch (error) {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("TIMEOUT")), 15000)
+      );
+
+      const response = (await Promise.race([responsePromise, timeoutPromise])) as any;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant" as const,
+          content: response.content || "Desculpe, não consegui processar sua solicitação.",
+          metadata: response.metadata,
+        },
+      ]);
+    } catch (error: any) {
       console.error("AI Error:", error);
-      toast.error("Erro ao conectar com a IA");
-      setMessages(prev => [...prev, { 
-        role: "assistant" as const, 
-        content: "Houve um erro técnico. Por favor, tente novamente."
-      }]);
+      const errorMessage =
+        error.message === "TIMEOUT"
+          ? "Levei um tempo a mais para pensar... Pode reformular sua pergunta ou tentar em instantes?"
+          : "Houve um erro técnico. Por favor, tente novamente.";
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant" as const,
+          content: errorMessage,
+        },
+      ]);
     } finally {
       setIsTyping(false);
     }
@@ -81,8 +116,10 @@ export function AIChatbot() {
             className="fixed bottom-24 right-6 z-50 bg-card border border-border/40 p-3 rounded-2xl shadow-xl max-w-[200px]"
           >
             <div className="relative">
-              <p className="text-xs font-medium text-foreground">Olá! Precisa de ajuda para agendar? 👋</p>
-              <button 
+              <p className="text-xs font-medium text-foreground">
+                Olá! Precisa de ajuda para agendar? 👋
+              </p>
+              <button
                 onClick={() => setShowBubble(false)}
                 className="absolute -top-4 -right-4 p-1 text-muted-foreground hover:text-foreground"
               >
@@ -100,7 +137,7 @@ export function AIChatbot() {
           open();
           setShowBubble(false);
         }}
-        className={`fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 p-0 shadow-2xl transition-all duration-300 ${isOpen ? 'scale-0' : 'scale-100'} bg-primary hover:bg-primary/90 text-primary-foreground`}
+        className={`fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 p-0 shadow-2xl transition-all duration-300 ${isOpen ? "scale-0" : "scale-100"} bg-primary hover:bg-primary/90 text-primary-foreground`}
       >
         <MessageSquare className="w-6 h-6" />
       </Button>
@@ -123,13 +160,15 @@ export function AIChatbot() {
                   <h4 className="font-bold">Royal IA</h4>
                   <div className="flex items-center gap-1">
                     <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                    <span className="text-[10px] opacity-80 uppercase tracking-widest font-bold">Online</span>
+                    <span className="text-[10px] opacity-80 uppercase tracking-widest font-bold">
+                      Online
+                    </span>
                   </div>
                 </div>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => close()}
                 className="text-white hover:bg-white/10"
               >
@@ -140,28 +179,38 @@ export function AIChatbot() {
             {/* Messages */}
             <div className="flex-grow p-6 overflow-y-auto space-y-4">
               {messages.map((msg, i) => (
-                <div 
-                  key={i} 
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                <div
+                  key={i}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  <div 
+                  <div
                     className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${
-                      msg.role === 'user' 
-                        ? 'bg-primary text-primary-foreground rounded-tr-none' 
-                        : 'bg-muted text-foreground rounded-tl-none border border-border/40'
+                      msg.role === "user"
+                        ? "bg-primary text-primary-foreground rounded-tr-none"
+                        : "bg-muted text-foreground rounded-tl-none border border-border/40"
                     }`}
                   >
                     {msg.content}
-                    
-                    {msg.metadata?.appointment_details && (
+
+                    {msg.metadata?.["appointment_details"] && (
                       <div className="mt-4 p-4 bg-black/40 rounded-xl border border-primary/20 space-y-3">
                         <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest">
                           <Sparkles className="w-3 h-3" />
                           Resumo do Agendamento
                         </div>
                         <div className="text-[10px] space-y-1 text-white/70">
-                          <p>Código: <span className="text-white font-mono">#{msg.metadata.appointment_details.id.split('-')[0].toUpperCase()}</span></p>
-                          <p>Valor: <span className="text-primary font-bold">R$ {msg.metadata.appointment_details.price}</span></p>
+                          <p>
+                            Código:{" "}
+                            <span className="text-white font-mono">
+                              #{msg.metadata["appointment_details"].id.split("-")[0].toUpperCase()}
+                            </span>
+                          </p>
+                          <p>
+                            Valor:{" "}
+                            <span className="text-primary font-bold">
+                              R$ {msg.metadata["appointment_details"].price}
+                            </span>
+                          </p>
                         </div>
                         <Button className="w-full bg-primary text-black font-bold h-8 text-[10px] rounded-lg">
                           Pagar via PIX
@@ -186,7 +235,12 @@ export function AIChatbot() {
             <div className="p-6 border-t border-border/40 bg-card/50 backdrop-blur-sm">
               {/* Quick Replies */}
               <div className="flex gap-2 overflow-x-auto pb-3 mb-1 no-scrollbar">
-                {["📅 Horários disponíveis hoje", "✂️ Preços e serviços", "👑 Planos do Clube", "💳 Chave PIX"].map((reply) => (
+                {[
+                  "📅 Horários disponíveis hoje",
+                  "✂️ Preços e serviços",
+                  "👑 Planos do Clube",
+                  "💳 Chave PIX",
+                ].map((reply) => (
                   <button
                     key={reply}
                     onClick={() => handleQuickReply(reply)}
@@ -198,16 +252,16 @@ export function AIChatbot() {
               </div>
 
               <div className="flex gap-2">
-                <Input 
-                  placeholder="Como posso ajudar?" 
+                <Input
+                  placeholder="Como posso ajudar?"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
                   className="rounded-full bg-background border-border/40"
                 />
-                <Button 
+                <Button
                   onClick={() => handleSend()}
-                  size="icon" 
+                  size="icon"
                   className="rounded-full shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   <Send className="w-4 h-4" />

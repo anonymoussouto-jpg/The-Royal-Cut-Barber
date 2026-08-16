@@ -18,10 +18,23 @@ import {
 } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { User, Calendar as CalendarIcon, ShoppingBag, LogOut, Edit3, Loader2, Award, ChevronRight } from "lucide-react";
+import {
+  User,
+  Calendar as CalendarIcon,
+  ShoppingBag,
+  LogOut,
+  Edit3,
+  Loader2,
+  Award,
+  ChevronRight,
+} from "lucide-react";
 import { useBooking } from "@/hooks/use-booking";
 
 export const Route = createFileRoute("/perfil")({
+  head: () => ({
+    title: "Meu Perfil | The Royal Cut",
+    meta: [{ name: "robots", content: "noindex" }],
+  }),
   component: ProfilePage,
 });
 
@@ -42,7 +55,9 @@ function ProfilePage() {
   }, []);
 
   async function loadData() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       navigate({ to: "/login" });
       return;
@@ -50,8 +65,17 @@ function ProfilePage() {
 
     const [profileRes, appRes, orderRes] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", user.id).single(),
-      supabase.from("appointments").select("*, services(name), barbers(full_name)").eq("client_id", user.id).order("start_time", { ascending: false }).limit(10),
-      supabase.from("orders").select("*").eq("client_id", user.id).order("created_at", { ascending: false })
+      supabase
+        .from("appointments")
+        .select("*, services(name), barbers(full_name)")
+        .eq("client_id", user.id)
+        .order("start_time", { ascending: false })
+        .limit(10),
+      supabase
+        .from("orders")
+        .select("*")
+        .eq("client_id", user.id)
+        .order("created_at", { ascending: false }),
     ]);
 
     setProfile(profileRes.data);
@@ -71,7 +95,7 @@ function ProfilePage() {
         .eq("id", profile.id);
 
       if (error) throw error;
-      
+
       toast.success("Perfil atualizado com sucesso!");
       setIsEditDialogOpen(false);
       loadData();
@@ -84,13 +108,19 @@ function ProfilePage() {
 
   const getPointsLevel = (points: number) => {
     if (points > 500) return { label: "Ouro", color: "text-yellow-500", progress: 100 };
-    if (points > 200) return { label: "Prata", color: "text-gray-400", progress: (points / 500) * 100 };
+    if (points > 200)
+      return { label: "Prata", color: "text-gray-400", progress: (points / 500) * 100 };
     return { label: "Bronze", color: "text-amber-700", progress: (points / 200) * 100 };
   };
 
   const level = getPointsLevel(profile?.barber_points || 0);
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>;
+  if (loading)
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="animate-spin text-primary" />
+      </div>
+    );
 
   return (
     <div className="container max-w-4xl py-20 px-6 space-y-8">
@@ -107,7 +137,11 @@ function ProfilePage() {
           </div>
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="icon" variant="ghost" className="absolute top-4 right-4 text-primary hover:bg-primary/10">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="absolute top-4 right-4 text-primary hover:bg-primary/10"
+              >
                 <Edit3 className="w-4 h-4" />
               </Button>
             </DialogTrigger>
@@ -118,26 +152,36 @@ function ProfilePage() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome Completo</Label>
-                  <Input 
-                    id="name" 
-                    value={editName} 
+                  <Input
+                    id="name"
+                    value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     className="bg-white/5 border-white/10"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefone</Label>
-                  <Input 
-                    id="phone" 
-                    value={editPhone} 
+                  <Input
+                    id="phone"
+                    value={editPhone}
                     onChange={(e) => setEditPhone(e.target.value)}
                     className="bg-white/5 border-white/10"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="border-white/10">Cancelar</Button>
-                <Button onClick={handleUpdateProfile} disabled={isUpdating} className="bg-primary text-black hover:bg-primary/90">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditDialogOpen(false)}
+                  className="border-white/10"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleUpdateProfile}
+                  disabled={isUpdating}
+                  className="bg-primary text-black hover:bg-primary/90"
+                >
                   {isUpdating ? "Salvando..." : "Salvar Alterações"}
                 </Button>
               </DialogFooter>
@@ -147,20 +191,37 @@ function ProfilePage() {
 
         <Card className="flex-1 bg-zinc-900/50 border-white/10 p-6 rounded-3xl w-full">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold flex items-center gap-2"><Award className="text-primary w-5 h-5" /> Barber Points</h3>
+            <h3 className="font-bold flex items-center gap-2">
+              <Award className="text-primary w-5 h-5" /> Barber Points
+            </h3>
             <span className={`font-black ${level.color}`}>{level.label}</span>
           </div>
-          <div className="text-4xl font-black text-primary mb-2">{profile?.barber_points || 0} pts</div>
+          <div className="text-4xl font-black text-primary mb-2">
+            {profile?.barber_points || 0} pts
+          </div>
           <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
-            <div className="bg-primary h-full transition-all" style={{ width: `${level.progress}%` }} />
+            <div
+              className="bg-primary h-full transition-all"
+              style={{ width: `${level.progress}%` }}
+            />
           </div>
         </Card>
       </div>
 
       <Tabs defaultValue="appointments" className="w-full">
         <TabsList className="bg-zinc-900/50 border border-white/5 rounded-xl p-1">
-          <TabsTrigger value="appointments" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-black">Meus Agendamentos</TabsTrigger>
-          <TabsTrigger value="orders" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-black">Minhas Compras</TabsTrigger>
+          <TabsTrigger
+            value="appointments"
+            className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-black"
+          >
+            Meus Agendamentos
+          </TabsTrigger>
+          <TabsTrigger
+            value="orders"
+            className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-black"
+          >
+            Minhas Compras
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="appointments" className="space-y-4 pt-6">
@@ -168,17 +229,34 @@ function ProfilePage() {
             <p className="text-center py-10 text-white/30 italic">Nenhum agendamento encontrado.</p>
           ) : (
             appointments.map((app) => (
-              <div key={app.id} className="p-4 bg-zinc-900/30 border border-white/5 rounded-xl flex items-center justify-between">
+              <div
+                key={app.id}
+                className="p-4 bg-zinc-900/30 border border-white/5 rounded-xl flex items-center justify-between"
+              >
                 <div>
                   <p className="font-bold">{app.services?.name}</p>
-                  <p className="text-xs text-white/50">{format(new Date(app.start_time), "dd/MM/yyyy HH:mm", { locale: ptBR })} • {app.barbers?.full_name}</p>
+                  <p className="text-xs text-white/50">
+                    {format(new Date(app.start_time), "dd/MM/yyyy HH:mm", { locale: ptBR })} •{" "}
+                    {app.barbers?.full_name}
+                  </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right mr-2">
-                    <p className="text-xs font-bold text-primary">R$ {Number(app.total_price).toFixed(2)}</p>
-                    <p className="text-[9px] uppercase text-white/40">{app.payment_status || 'pendente'}</p>
+                    <p className="text-xs font-bold text-primary">
+                      R$ {Number(app.total_price).toFixed(2)}
+                    </p>
+                    <p className="text-[9px] uppercase text-white/40">
+                      {app.payment_status || "pendente"}
+                    </p>
                   </div>
-                  <Button onClick={() => booking.open(app.services?.id)} size="sm" variant="outline" className="border-white/10 hover:bg-primary hover:text-black">Reagendar</Button>
+                  <Button
+                    onClick={() => booking.open(app.services?.id)}
+                    size="sm"
+                    variant="outline"
+                    className="border-white/10 hover:bg-primary hover:text-black"
+                  >
+                    Reagendar
+                  </Button>
                 </div>
               </div>
             ))
@@ -190,14 +268,23 @@ function ProfilePage() {
             <p className="text-center py-10 text-white/30 italic">Nenhum pedido encontrado.</p>
           ) : (
             orders.map((order) => (
-              <div key={order.id} className="p-4 bg-zinc-900/30 border border-white/5 rounded-xl flex items-center justify-between">
+              <div
+                key={order.id}
+                className="p-4 bg-zinc-900/30 border border-white/5 rounded-xl flex items-center justify-between"
+              >
                 <div>
                   <p className="font-bold">Pedido #{order.id.slice(-6).toUpperCase()}</p>
-                  <p className="text-xs text-white/50">{format(new Date(order.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</p>
+                  <p className="text-xs text-white/50">
+                    {format(new Date(order.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                  </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-primary">R$ {Number(order.total_amount).toFixed(2)}</p>
-                  <p className="text-[10px] uppercase tracking-wider text-white/40">{order.status === 'confirmed' ? 'Confirmado' : 'Pendente'}</p>
+                  <p className="text-sm font-bold text-primary">
+                    R$ {Number(order.total_amount).toFixed(2)}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-white/40">
+                    {order.status === "confirmed" ? "Confirmado" : "Pendente"}
+                  </p>
                 </div>
               </div>
             ))
@@ -205,7 +292,11 @@ function ProfilePage() {
         </TabsContent>
       </Tabs>
 
-      <Button onClick={() => supabase.auth.signOut().then(() => navigate({ to: "/" }))} variant="destructive" className="w-full rounded-xl">
+      <Button
+        onClick={() => supabase.auth.signOut().then(() => navigate({ to: "/" }))}
+        variant="destructive"
+        className="w-full rounded-xl"
+      >
         <LogOut className="w-4 h-4 mr-2" /> Sair
       </Button>
     </div>

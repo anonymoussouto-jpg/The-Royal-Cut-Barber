@@ -4,7 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Scissors, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
@@ -55,7 +62,7 @@ function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-black p-4 bg-[url('https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80')] bg-cover bg-center">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-      
+
       <Card className="w-full max-w-md relative border-white/10 bg-zinc-900/90 backdrop-blur-xl text-white">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
@@ -63,22 +70,26 @@ function ResetPasswordPage() {
               <ShieldCheck className="w-6 h-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-serif font-bold tracking-tight text-primary">NOVA SENHA</CardTitle>
-          <CardDescription className="text-zinc-400">Defina sua nova credencial de acesso</CardDescription>
+          <CardTitle className="text-3xl font-serif font-bold tracking-tight text-primary">
+            NOVA SENHA
+          </CardTitle>
+          <CardDescription className="text-zinc-400">
+            Defina sua nova credencial de acesso
+          </CardDescription>
         </CardHeader>
-        
+
         <form onSubmit={handleReset} className="space-y-4">
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="password">Nova Senha</Label>
               <div className="relative">
-                <Input 
-                  id="password" 
-                  type={showPassword ? "text" : "password"} 
-                  placeholder="••••••••" 
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required 
+                  required
                   className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 pr-10"
                 />
                 <button
@@ -93,22 +104,22 @@ function ResetPasswordPage() {
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
-              <Input 
-                id="confirmPassword" 
-                type={showPassword ? "text" : "password"} 
-                placeholder="••••••••" 
+              <Input
+                id="confirmPassword"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                required 
+                required
                 className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
               />
             </div>
           </CardContent>
-          
+
           <CardFooter>
-            <Button 
-              type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-12 rounded-xl" 
+            <Button
+              type="submit"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-12 rounded-xl"
               disabled={loading}
             >
               {loading ? "Atualizando..." : "Redefinir Senha"}
