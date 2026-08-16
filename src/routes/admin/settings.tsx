@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Cpu, Wallet } from "lucide-react";
+import { Cpu, Wallet, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -59,7 +59,14 @@ function AdminSettings() {
     toast.success('Configurações salvas com sucesso!');
   };
 
-  if (loading) return <div>Carregando...</div>;
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-40 gap-4">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+        <p className="text-primary font-bold uppercase tracking-widest text-xs">Carregando configurações...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl space-y-8">

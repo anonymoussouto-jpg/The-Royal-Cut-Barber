@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Scissors, Calendar, Sparkles, Star, ArrowRight, Quote } from "lucide-react";
+import { Scissors, Calendar, Sparkles, Star, ArrowRight, Quote, Anchor } from "lucide-react";
 import PublicLayout from "@/components/layout/PublicLayout";
 import { AIChatbot } from "@/components/ai/AIChatbot";
 import { useBooking } from "@/hooks/use-booking";
@@ -66,7 +66,7 @@ function LandingPage() {
                 <span className="text-primary italic">Barbearia e Irmandade</span>
               </h1>
               <p className="max-w-2xl mx-auto text-lg md:text-xl text-gray-300 mb-10">
-                Muito mais que um corte. Um ambiente de respeito, conversas edificantes e excelência no serviço, liderado por Thiago.
+                Muito mais que um corte. Um espaço de honra, excelência e irmandade, guiado pelo Thiago para servir você com o melhor da arte da barbearia.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button onClick={() => booking.open()} size="lg" className="h-14 px-8 text-base bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-bold">
@@ -84,6 +84,69 @@ function LandingPage() {
           <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
             <span className="text-[10px] uppercase tracking-[0.2em] text-white/40">Explore</span>
             <div className="w-px h-12 bg-gradient-to-b from-primary to-transparent" />
+          </div>
+        </section>
+
+        {/* Our History Section */}
+        <section className="py-24 bg-background overflow-hidden">
+          <div className="container px-6 mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <motion.div
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <Anchor className="w-5 h-5 text-primary" />
+                  <span className="text-sm font-semibold tracking-[0.3em] text-primary uppercase">Nossa Identidade</span>
+                </div>
+                <h2 className="text-4xl md:text-5xl font-serif font-bold mb-8 leading-tight text-white">
+                  Mais que um Corte. <br />
+                  <span className="text-primary italic">Uma Missão.</span>
+                </h2>
+                <div className="space-y-6 text-lg text-muted-foreground leading-relaxed">
+                  <p>
+                    A The Royal Cut nasceu do coração de Thiago, um homem de fé que acredita que o cuidado com o próximo é uma forma de louvor. 
+                    Aqui, cada cliente é tratado com a dignidade que merece — não apenas como consumidor, mas como irmão.
+                  </p>
+                  <p>
+                    Fundada sobre os valores de excelência, honra e propósito, nossa barbearia é um espaço onde o homem pode ser cuidado por inteiro: 
+                    no visual, na conversa e no espírito.
+                  </p>
+                </div>
+                
+                <div className="mt-12 p-8 border-l-4 border-primary bg-primary/5 rounded-r-2xl">
+                  <Quote className="w-8 h-8 text-primary/20 mb-4" />
+                  <p className="text-xl font-serif italic text-white mb-4">
+                    "Tudo o que fizerem, façam de coração, como para o Senhor."
+                  </p>
+                  <cite className="text-sm font-bold text-primary uppercase tracking-widest not-italic">
+                    — Colossenses 3:23
+                  </cite>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+                className="relative"
+              >
+                <div className="aspect-[4/5] rounded-3xl overflow-hidden border-8 border-card shadow-2xl relative z-10">
+                  <img 
+                    src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80&w=800" 
+                    alt="Propósito e Fé" 
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                </div>
+                {/* Decorative Elements */}
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl -z-10" />
+                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl -z-10" />
+              </motion.div>
+            </div>
           </div>
         </section>
 

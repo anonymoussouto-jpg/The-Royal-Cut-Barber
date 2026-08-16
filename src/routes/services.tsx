@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Clock, Tag, Scissors, Loader2 } from "lucide-react";
 import { useBooking } from "@/hooks/use-booking";
+import { StyleGallery } from "@/components/services/StyleGallery";
 
 export const Route = createFileRoute("/services")({
   component: ServicesPage,
@@ -64,6 +65,8 @@ function ServicesPage() {
             Onde a tradição encontra o cuidado. Escolha o serviço que melhor reflete sua honra.
           </p>
         </motion.div>
+
+        <StyleGallery />
 
         {/* Categories Filter */}
         <div className="flex flex-wrap justify-center gap-4 mb-12">

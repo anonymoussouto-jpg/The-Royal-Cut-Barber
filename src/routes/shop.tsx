@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { Check } from "lucide-react";
 import PublicLayout from "@/components/layout/PublicLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,21 @@ function GroomingStore() {
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  const handleAddToCart = (product: Product) => {
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: Number(product.price),
+      image: product.image_url || "https://images.unsplash.com/photo-1626285861696-9f0bf5a49c6d?auto=format&fit=crop&q=80&w=800"
+    });
+    
+    toast.success(`${product.name} adicionado ao carrinho!`, {
+      icon: <Check className="w-4 h-4 text-primary" />,
+      className: "bg-card border-primary/20 text-foreground",
+      duration: 3000,
+    });
+  };
 
   const fetchProducts = async () => {
     try {
@@ -143,12 +160,7 @@ function GroomingStore() {
                       <span className="text-xl font-bold text-primary">R$ {Number(product.price).toFixed(2)}</span>
                       <Button 
                         disabled={product.stock_quantity === 0}
-                        onClick={() => addItem({
-                          id: product.id,
-                          name: product.name,
-                          price: Number(product.price),
-                          image: product.image_url || "https://images.unsplash.com/photo-1626285861696-9f0bf5a49c6d?auto=format&fit=crop&q=80&w=800"
-                        })}
+                        onClick={() => handleAddToCart(product)}
                         size="sm" 
                         className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-10 px-6 font-bold"
                       >

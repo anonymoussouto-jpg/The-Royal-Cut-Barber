@@ -1,5 +1,6 @@
-import { createFileRoute, Outlet, Link, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Outlet, Link, useLocation } from "@tanstack/react-router";
 import { Scissors, ShoppingBag, Calendar, User, MessageSquare, LayoutDashboard, MapPin, Clock } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useBooking } from "@/hooks/use-booking";
 import { useChatbot } from "@/hooks/use-chatbot";
@@ -7,6 +8,12 @@ import { useChatbot } from "@/hooks/use-chatbot";
 function PublicLayout({ children }: { children: React.ReactNode }) {
   const booking = useBooking();
   const chatbot = useChatbot();
+  const location = useLocation();
+
+  const isLinkActive = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* Desktop Navigation */}
@@ -18,10 +25,22 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
           </Link>
           
           <div className="hidden md:flex items-center gap-8">
-            <Link to="/" className="text-sm font-medium hover:text-primary transition-colors">Início</Link>
-            <Link to="/services" className="text-sm font-medium hover:text-primary transition-colors">Serviços</Link>
-            <Link to="/shop" className="text-sm font-medium hover:text-primary transition-colors">Loja</Link>
-            <Link to="/membership" className="text-sm font-medium hover:text-primary transition-colors">Clube</Link>
+            <Link to="/" className={`text-sm font-medium transition-colors relative py-1 ${isLinkActive('/') ? 'text-primary' : 'hover:text-primary'}`}>
+              Início
+              {isLinkActive('/') && <motion.div layoutId="activeNav" className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary" />}
+            </Link>
+            <Link to="/services" className={`text-sm font-medium transition-colors relative py-1 ${isLinkActive('/services') ? 'text-primary' : 'hover:text-primary'}`}>
+              Serviços
+              {isLinkActive('/services') && <motion.div layoutId="activeNav" className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary" />}
+            </Link>
+            <Link to="/shop" className={`text-sm font-medium transition-colors relative py-1 ${isLinkActive('/shop') ? 'text-primary' : 'hover:text-primary'}`}>
+              Loja
+              {isLinkActive('/shop') && <motion.div layoutId="activeNav" className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary" />}
+            </Link>
+            <Link to="/membership" className={`text-sm font-medium transition-colors relative py-1 ${isLinkActive('/membership') ? 'text-primary' : 'hover:text-primary'}`}>
+              Clube
+              {isLinkActive('/membership') && <motion.div layoutId="activeNav" className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary" />}
+            </Link>
           </div>
 
           <div className="flex items-center gap-4">
@@ -76,18 +95,18 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile Sticky Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-t border-border/40 px-6 py-3">
         <div className="flex items-center justify-between max-w-md mx-auto">
-          <Link to="/" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-primary">
+          <Link to="/" className={`flex flex-col items-center gap-1 transition-colors ${isLinkActive('/') ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}>
             <Scissors className="w-5 h-5" />
             <span className="text-[10px]">Início</span>
           </Link>
-          <Link to="/shop" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-primary">
+          <Link to="/shop" className={`flex flex-col items-center gap-1 transition-colors ${isLinkActive('/shop') ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}>
             <ShoppingBag className="w-5 h-5" />
             <span className="text-[10px]">Loja</span>
           </Link>
           <Button onClick={() => booking.open()} size="sm" className="bg-primary text-primary-foreground -mt-8 shadow-lg shadow-primary/20 rounded-full w-12 h-12 p-0">
             <Calendar className="w-6 h-6" />
           </Button>
-          <Link to="/membership" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-primary">
+          <Link to="/membership" className={`flex flex-col items-center gap-1 transition-colors ${isLinkActive('/membership') ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}>
             <User className="w-5 h-5" />
             <span className="text-[10px]">Clube</span>
           </Link>

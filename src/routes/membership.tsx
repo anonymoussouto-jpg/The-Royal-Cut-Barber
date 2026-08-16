@@ -11,7 +11,7 @@ export const Route = createFileRoute("/membership")({
 
 const plans = [
   {
-    name: "Membro Fundador",
+    name: "Membro Fiel",
     price: "R$ 149,90",
     period: "/mês",
     description: "Para quem valoriza o essencial com excelência e cuidado.",
@@ -24,10 +24,10 @@ const plans = [
       "Café Nespresso liberado"
     ],
     highlight: false,
-    buttonText: "Unir-se como Fundador"
+    buttonText: "Unir-se como Fiel"
   },
   {
-    name: "Membro Aliança",
+    name: "Aliança Royal",
     price: "R$ 289,90",
     period: "/mês",
     description: "Cuidado completo e presença constante na irmandade.",
@@ -44,7 +44,7 @@ const plans = [
     buttonText: "Firmar Aliança"
   },
   {
-    name: "Irmandade Royal",
+    name: "Irmandade Plena",
     price: "R$ 499,90",
     period: "/mês",
     description: "Compromisso total com a excelência e honra mútua.",
