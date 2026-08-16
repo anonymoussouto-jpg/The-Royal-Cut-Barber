@@ -13,7 +13,7 @@ export function AIChatbot() {
   const { isOpen, open, close } = useChatbot();
   const [showBubble, setShowBubble] = useState(true);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<{ role: "assistant" | "user" | "system"; content: string; metadata?: any }[]>([
+  const [messages, setMessages] = useState<{ role: "assistant" | "user" | "system"; content: string; metadata?: any | null }[]>([
     { role: "assistant", content: "Olá, seja bem-vindo à The Royal Cut, a barbearia do Thiago. Como posso servir você hoje?" }
   ]);
   const [isTyping, setIsTyping] = useState(false);
