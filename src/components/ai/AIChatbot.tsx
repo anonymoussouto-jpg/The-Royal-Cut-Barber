@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  QrCode,
-  CreditCard,
-  Wallet,
   MessageSquare,
   X,
   Send,
@@ -12,8 +9,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useServerFn } from "@tanstack/react-start";
-import { chatWithAI } from "@/lib/ai.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useChatbot } from "@/hooks/use-chatbot";
 import { useNavigate } from "@tanstack/react-router";
@@ -47,8 +43,6 @@ export function AIChatbot() {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const sendMessage = useServerFn(chatWithAI);
-
   const handleQuickReply = (text: string) => {
     handleSend(text);
   };
@@ -65,24 +59,116 @@ export function AIChatbot() {
     setIsTyping(true);
 
     try {
-      const responsePromise = sendMessage({
-        data: {
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
-        },
-      });
+      // 1. Fetch context data (services, barbers)
+      const [{ data: services }, { data: barbers }] = await Promise.all([
+        supabase.from('services').select('*').eq('is_active', true),
+        supabase.from('barbers').select('*')
+      ]);
+
+      const systemPrompt = `Você é a Royal IA, assistente virtual da The Royal Cut - Barbearia e Irmandade.
+Sua missão é atender com excelência, honra e cavalheirismo.
+A barbearia é de propriedade do Thiago.
+
+SERVIÇOS DISPONÍVEIS:
+${services?.map(s => `- ${s.name}: R$ ${s.price} (${s.duration_minutes} min)`).join('\n')}
+
+NOSSA EQUIPE:
+${barbers?.map(b => `- ${b.full_name}: ${b.bio || 'Barbeiro'}`).join('\n')}
+
+REGRAS:
+- Seja educado e prestativo.
+- Use termos como "honra", "irmandade", "excelência".
+- Para agendamentos, direcione o cliente para o botão de agendamento ou peça para ele dizer o serviço e profissional desejado.
+- Se o cliente perguntar sobre o endereço ou contato, informe que os dados estão no rodapé do site.
+- Mantenha respostas concisas e amigáveis.`;
+
+      // 2. Fetch API keys
+      const { data: settings } = await supabase
+        .from('system_settings')
+        .select('key, value')
+        .in('key', ['gemini_key', 'groq_key']);
+
+      const geminiKey = settings?.find(s => s.key === 'gemini_key')?.value as string | undefined;
+      const groqKey = settings?.find(s => s.key === 'groq_key')?.value as string | undefined;
+
+      // 3. Prepare and sanitize history for Gemini
+      // Gemini requires first message to be from 'user'
+      let history = [...newMessages];
+      while (history.length > 0 && history[0]?.role !== 'user') {
+        history.shift();
+      }
+
+      if (history.length === 0) {
+        history = [userMessage];
+      }
 
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("TIMEOUT")), 15000)
       );
 
-      const response = (await Promise.race([responsePromise, timeoutPromise])) as any;
+      const fetchAIResponse = async () => {
+        // 4. Try Gemini
+        if (geminiKey) {
+          try {
+            const geminiHistory = history.map(msg => ({
+              role: msg.role === 'assistant' ? 'model' : 'user',
+              parts: [{ text: msg.content }]
+            }));
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: geminiHistory,
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+              })
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              return data.candidates?.[0]?.content?.parts?.[0]?.text;
+            }
+          } catch (e) {
+            console.error("Gemini failed, trying Groq...", e);
+          }
+        }
+
+        // 5. Try Groq fallback
+        if (groqKey) {
+          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${groqKey}`
+            },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                ...history.map(m => ({ role: m.role, content: m.content }))
+              ]
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            return data.choices?.[0]?.message?.content;
+          }
+        }
+
+        throw new Error("Não foi possível obter resposta das IAs.");
+      };
+
+      const aiContent = await Promise.race([
+        fetchAIResponse(),
+        timeoutPromise
+      ]) as string;
 
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant" as const,
-          content: response.content || "Desculpe, não consegui processar sua solicitação.",
-          metadata: response.metadata,
+          content: aiContent || "Desculpe, não consegui processar sua solicitação no momento.",
         },
       ]);
     } catch (error: any) {
@@ -90,7 +176,7 @@ export function AIChatbot() {
       const errorMessage =
         error.message === "TIMEOUT"
           ? "Levei um tempo a mais para pensar... Pode reformular sua pergunta ou tentar em instantes?"
-          : "Houve um erro técnico. Por favor, tente novamente.";
+          : "Houve um erro técnico ao processar sua mensagem. Por favor, tente novamente mais tarde.";
 
       setMessages((prev) => [
         ...prev,
