@@ -43,6 +43,7 @@ function AdminLayout() {
 
   const menuItems = [
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { label: "Pedidos Loja", href: "/admin/orders", icon: ShoppingBag },
     { label: "Agenda", href: "/admin/calendar", icon: Calendar },
     { label: "Clientes CRM", href: "/admin/crm", icon: Users },
     { label: "Equipe", href: "/admin/staff", icon: Scissors },

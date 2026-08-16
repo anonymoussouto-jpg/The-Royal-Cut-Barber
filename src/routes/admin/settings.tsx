@@ -54,9 +54,12 @@ function AdminSettings() {
 
   const saveSetting = async (key: string, value: string) => {
     try {
+      // Serialize value as JSONB for Supabase
+      const jsonValue = JSON.stringify(value);
+      
       const { error } = await supabase.from('system_settings').upsert({
         key,
-        value,
+        value: jsonValue,
         updated_at: new Date().toISOString()
       });
       if (error) throw error;

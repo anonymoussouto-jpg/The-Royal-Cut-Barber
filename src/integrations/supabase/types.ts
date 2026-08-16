@@ -132,6 +132,53 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          client_id: string | null
+          client_name: string
+          client_phone: string
+          created_at: string
+          id: string
+          items: Json
+          payment_method: string
+          pix_key: string | null
+          status: string
+          total_amount: number
+        }
+        Insert: {
+          client_id?: string | null
+          client_name: string
+          client_phone: string
+          created_at?: string
+          id?: string
+          items: Json
+          payment_method?: string
+          pix_key?: string | null
+          status?: string
+          total_amount: number
+        }
+        Update: {
+          client_id?: string | null
+          client_name?: string
+          client_phone?: string
+          created_at?: string
+          id?: string
+          items?: Json
+          payment_method?: string
+          pix_key?: string | null
+          status?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string | null
