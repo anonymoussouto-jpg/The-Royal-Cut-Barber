@@ -18,7 +18,18 @@ export const chatWithAI = createServerFn({ method: "POST" })
       .from('system_settings')
       .select('key, value');
     
-    const getSetting = (key: string) => settings?.find(s => s.key === key)?.value;
+    const getSetting = (key: string) => {
+      const setting = settings?.find(s => s.key === key)?.value;
+      if (!setting) return null;
+      try {
+        if (typeof setting === 'string') {
+          return JSON.parse(setting);
+        }
+      } catch (e) {
+        return setting;
+      }
+      return setting;
+    };
 
     const geminiKeys = [
       process.env['GEMINI_API_KEY'],

@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Cpu, Wallet, Loader2 } from "lucide-react";
+import { Cpu, Wallet, Loader2, CreditCard, ShieldCheck } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/admin/settings")({
   component: AdminSettings,
@@ -29,7 +30,6 @@ function AdminSettings() {
       const settingsMap = data.reduce((acc, curr) => {
         let parsedValue = curr.value;
         try {
-          // If it's already an object, use it; if it's a JSON-encoded string, parse it
           if (typeof curr.value === 'string') {
             parsedValue = JSON.parse(curr.value);
           }
@@ -54,7 +54,6 @@ function AdminSettings() {
 
   const saveSetting = async (key: string, value: string) => {
     try {
-      // Serialize value as JSONB for Supabase
       const jsonValue = JSON.stringify(value);
       
       const { error } = await supabase.from('system_settings').upsert({
@@ -91,6 +90,69 @@ function AdminSettings() {
       </div>
 
       <div className="grid gap-8">
+        {/* Asaas Configuration */}
+        <Card className="border-border/40 bg-card/50">
+          <CardHeader className="flex flex-row items-center gap-4">
+            <CreditCard className="w-6 h-6 text-primary" />
+            <div>
+              <CardTitle>Gateway de Pagamento (Asaas)</CardTitle>
+              <p className="text-sm text-muted-foreground">Integração real para PIX e Cartão de Crédito.</p>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <Label>API Key Asaas</Label>
+                <Input 
+                  type="password" 
+                  placeholder="$asaas_access_token..." 
+                  value={settings['asaas_api_key'] || ''}
+                  onChange={(e) => saveSetting('asaas_api_key', e.target.value)}
+                />
+                <p className="text-[10px] text-muted-foreground">Chave de acesso obtida no painel do Asaas.</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Ambiente</Label>
+                  <Select 
+                    value={settings['asaas_env'] || 'sandbox'} 
+                    onValueChange={(val) => saveSetting('asaas_env', val)}
+                  >
+                    <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                      <SelectValue placeholder="Selecione o ambiente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sandbox">Sandbox (Teste)</SelectItem>
+                      <SelectItem value="production">Produção (Real)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Webhook Secret</Label>
+                  <Input 
+                    type="password" 
+                    placeholder="Token do Webhook..." 
+                    value={settings['asaas_webhook_secret'] || ''}
+                    onChange={(e) => saveSetting('asaas_webhook_secret', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-3">
+              <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-primary uppercase">Segurança de Webhook</p>
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  Configure a URL do webhook no painel do Asaas para: <br/>
+                  <code className="text-primary font-mono select-all">{window.location.origin}/api/public/asaas-webhook</code>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* IA Configuration */}
         <Card className="border-border/40 bg-card/50">
           <CardHeader className="flex flex-row items-center gap-4">
@@ -139,13 +201,13 @@ function AdminSettings() {
           </CardContent>
         </Card>
 
-        {/* Payment Configuration */}
+        {/* Payment Configuration (Fallback) */}
         <Card className="border-border/40 bg-card/50">
           <CardHeader className="flex flex-row items-center gap-4">
             <Wallet className="w-6 h-6 text-primary" />
             <div>
-              <CardTitle>Pagamentos (PIX)</CardTitle>
-              <p className="text-sm text-muted-foreground">Defina as chaves para recebimento instantâneo.</p>
+              <CardTitle>Chave PIX Manual (Backup)</CardTitle>
+              <p className="text-sm text-muted-foreground">Usada caso o gateway automático esteja desativado.</p>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">

@@ -134,36 +134,48 @@ export type Database = {
       }
       orders: {
         Row: {
+          asaas_customer_id: string | null
+          asaas_payment_id: string | null
           client_id: string | null
           client_name: string
           client_phone: string
           created_at: string
           id: string
           items: Json
+          net_value: number | null
+          paid_at: string | null
           payment_method: string
           pix_key: string | null
           status: string
           total_amount: number
         }
         Insert: {
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
           client_id?: string | null
           client_name: string
           client_phone: string
           created_at?: string
           id?: string
           items: Json
+          net_value?: number | null
+          paid_at?: string | null
           payment_method?: string
           pix_key?: string | null
           status?: string
           total_amount: number
         }
         Update: {
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
           client_id?: string | null
           client_name?: string
           client_phone?: string
           created_at?: string
           id?: string
           items?: Json
+          net_value?: number | null
+          paid_at?: string | null
           payment_method?: string
           pix_key?: string | null
           status?: string

@@ -16,11 +16,14 @@ import {
   ChevronLeft,
   Loader2,
   Check,
-  CreditCard
+  CreditCard,
+  Wallet
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { useServerFn } from "@tanstack/react-start";
+import { createAsaasPayment } from "@/lib/payments.functions";
 
 import {
   Dialog,
@@ -29,7 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-type Step = 'service' | 'barber' | 'datetime' | 'info' | 'payment' | 'success';
+type Step = 'service' | 'barber' | 'datetime' | 'info' | 'payment_method' | 'payment_pix' | 'payment_card' | 'success';
 
 export function BookingModal() {
   const { isOpen, close, serviceId: initialServiceId, barberId: initialBarberId } = useBooking();
@@ -40,7 +43,10 @@ export function BookingModal() {
   const [services, setServices] = useState<any[]>([]);
   const [barbers, setBarbers] = useState<any[]>([]);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
-  const [pixKey, setPixKey] = useState<string>("00020126360014BR.GOV.BCB.PIX0114+5511999999999520400005303986540510.005802BR5913THE ROYAL CUT6009SAO PAULO62070503***6304E2B1");
+  const [asaasData, setAsaasData] = useState<any>(null);
+  const [lastAppointmentId, setLastAppointmentId] = useState<string | null>(null);
+
+  const startPaymentFn = useServerFn(createAsaasPayment);
 
   // Selection state
   const [selectedService, setSelectedService] = useState<any>(null);
@@ -100,12 +106,7 @@ export function BookingModal() {
   }
 
   async function fetchPixKey() {
-    const { data } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'pix_key')
-      .single();
-    if (data?.value) setPixKey(String(data.value));
+    // Pix key is now managed via Asaas creation, no longer pre-fetched
   }
 
   async function fetchBookedSlots() {
@@ -132,7 +133,34 @@ export function BookingModal() {
     '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
   ];
 
-  const handleBooking = async (paymentStatus: 'confirmed' | 'pending' = 'confirmed') => {
+  useEffect(() => {
+    if (!lastAppointmentId) return;
+
+    const channel = supabase
+      .channel(`appointment-status-${lastAppointmentId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'appointments',
+          filter: `id=eq.${lastAppointmentId}`
+        },
+        (payload) => {
+          if (payload.new['status'] === 'confirmed') {
+            setStep('success');
+            toast.success("Pagamento confirmado!");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [lastAppointmentId]);
+
+  const handleBooking = async (paymentMethod: 'PIX' | 'CREDIT_CARD' | 'IN_PERSON') => {
     setLoading(true);
     try {
       const startTime = new Date(selectedDate!);
@@ -142,9 +170,7 @@ export function BookingModal() {
       const { data: { user } } = await supabase.auth.getUser();
       let clientId = user?.id;
 
-      // If not logged in, search or create a guest profile
       if (!clientId) {
-        // Search by phone
         const { data: existingProfile } = await supabase
           .from('profiles')
           .select('id')
@@ -154,7 +180,6 @@ export function BookingModal() {
         if (existingProfile) {
           clientId = existingProfile.id;
         } else {
-          // Create new guest profile
           const { data: newProfile, error: profileError } = await supabase
             .from('profiles')
             .insert({
@@ -171,7 +196,7 @@ export function BookingModal() {
         }
       }
       
-      const { error } = await supabase.from('appointments').insert({
+      const { data: appointment, error: appointmentError } = await supabase.from('appointments').insert({
         service_id: selectedService.id,
         barber_id: selectedBarber.id,
         client_id: clientId,
@@ -179,13 +204,35 @@ export function BookingModal() {
         client_phone: clientPhone,
         start_time: startTime.toISOString(),
         total_price: selectedService.price,
-        status: paymentStatus === 'confirmed' ? 'confirmed' : 'pending'
+        status: 'pending',
+        // @ts-ignore - payment_method added via migration
+        payment_method: paymentMethod
+      } as any).select('id').single();
+
+      if (appointmentError) throw appointmentError;
+      setLastAppointmentId(appointment.id);
+
+      if (paymentMethod === 'IN_PERSON') {
+        setStep('success');
+        toast.success('Agendamento realizado! Pague no local.');
+        return;
+      }
+
+      // Asaas Integration
+      const asaasRes = await startPaymentFn({
+        data: {
+          orderId: appointment.id,
+          amount: selectedService.price,
+          customerName: clientName,
+          mobilePhone: clientPhone,
+          billingType: paymentMethod as any
+        }
       });
 
-      if (error) throw error;
-      
-      setStep('success');
-      toast.success('Agendamento confirmado com sucesso!');
+      setAsaasData(asaasRes);
+      if (paymentMethod === 'PIX') setStep('payment_pix');
+      else if (paymentMethod === 'CREDIT_CARD') setStep('payment_card');
+
     } catch (error: any) {
       toast.error('Erro ao agendar: ' + error.message);
     } finally {
@@ -194,8 +241,10 @@ export function BookingModal() {
   };
 
   const copyPix = () => {
-    navigator.clipboard.writeText(pixKey);
-    toast.success('Código PIX copiado!');
+    if (asaasData?.payload) {
+      navigator.clipboard.writeText(asaasData.payload);
+      toast.success('Código PIX copiado!');
+    }
   };
 
   const formatPhone = (value: string) => {
@@ -211,7 +260,7 @@ export function BookingModal() {
     { key: 'barber', label: 'Barbeiro', icon: User },
     { key: 'datetime', label: 'Data/Hora', icon: CalendarIcon },
     { key: 'info', label: 'Dados', icon: CheckCircle2 },
-    { key: 'payment', label: 'PIX', icon: QrCode },
+    { key: 'payment_method', label: 'Pagamento', icon: CreditCard },
     { key: 'success', label: 'Confirmado', icon: Check },
   ];
 
@@ -472,7 +521,7 @@ export function BookingModal() {
 
                   <Button 
                     disabled={!clientName || !clientPhone}
-                    onClick={() => setStep('payment')}
+                    onClick={() => setStep('payment_method')}
                     className="w-full bg-primary text-primary-foreground h-12 rounded-xl font-bold"
                   >
                     Ir para o Pagamento
@@ -481,60 +530,127 @@ export function BookingModal() {
               </motion.div>
             )}
 
-            {step === 'payment' && (
+            {step === 'payment_method' && (
               <motion.div
-                key="payment"
+                key="payment_method"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-4"
               >
-                <div className="flex flex-col items-center text-center py-6">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
-                    <QrCode className="w-8 h-8 text-primary" />
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-primary" />
                   </div>
-                  <h2 className="text-2xl font-bold font-serif mb-2">Pagamento via PIX</h2>
-                  <p className="text-sm text-white/50 max-w-[280px]">Escaneie o código abaixo para confirmar seu agendamento.</p>
+                  <div>
+                    <h2 className="text-xl font-bold font-serif">Forma de Pagamento</h2>
+                    <p className="text-xs text-white/50">Escolha como deseja pagar</p>
+                  </div>
                 </div>
 
-                <div className="bg-white p-4 rounded-3xl w-48 h-48 mx-auto mb-8">
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(pixKey)}`} className="w-full h-full" alt="QR PIX" />
+                <div className="grid gap-3">
+                  <Button 
+                    onClick={() => handleBooking('PIX')}
+                    disabled={loading}
+                    className="h-16 justify-start gap-4 bg-white/5 border-white/10 hover:bg-white/10 hover:border-primary/50 text-white"
+                  >
+                    <QrCode className="w-6 h-6 text-primary" />
+                    <div className="text-left">
+                      <p className="font-bold">PIX</p>
+                      <p className="text-[10px] text-white/40 uppercase">Liberação Imediata</p>
+                    </div>
+                  </Button>
+
+                  <Button 
+                    onClick={() => handleBooking('CREDIT_CARD')}
+                    disabled={loading}
+                    className="h-16 justify-start gap-4 bg-white/5 border-white/10 hover:bg-white/10 hover:border-primary/50 text-white"
+                  >
+                    <CreditCard className="w-6 h-6 text-primary" />
+                    <div className="text-left">
+                      <p className="font-bold">Cartão de Crédito</p>
+                      <p className="text-[10px] text-white/40 uppercase">Pelo Asaas</p>
+                    </div>
+                  </Button>
+
+                  <Button 
+                    onClick={() => handleBooking('IN_PERSON')}
+                    disabled={loading}
+                    className="h-16 justify-start gap-4 bg-white/5 border-white/10 hover:bg-white/10 hover:border-primary/50 text-white"
+                  >
+                    <Wallet className="w-6 h-6 text-primary" />
+                    <div className="text-left">
+                      <p className="font-bold">Pagar na Barbearia</p>
+                      <p className="text-[10px] text-white/40 uppercase">No Local</p>
+                    </div>
+                  </Button>
                 </div>
 
-                <div className="space-y-4">
+                {loading && (
+                  <div className="flex items-center justify-center gap-2 pt-4">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span className="text-xs text-white/40 uppercase tracking-widest font-bold">Processando cobrança...</span>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {step === 'payment_pix' && (
+              <motion.div
+                key="payment_pix"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center space-y-6"
+              >
+                <div className="space-y-2">
+                  <h3 className="text-xl font-bold text-primary font-serif">Escaneie o PIX</h3>
+                  <p className="text-xs text-white/50">Pague agora para confirmar seu horário automaticamente.</p>
+                </div>
+                
+                <div className="bg-white p-4 rounded-3xl w-48 h-48 mx-auto shadow-2xl shadow-primary/20">
+                  {asaasData?.encodedImage ? (
+                    <img src={`data:image/png;base64,${asaasData.encodedImage}`} alt="QR PIX" className="w-full h-full" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-black">QR Indisponível</div>
+                  )}
+                </div>
+
+                <div className="space-y-3 px-4">
                   <Button 
                     variant="outline" 
                     onClick={copyPix}
                     className="w-full border-white/10 bg-white/5 h-12 rounded-xl text-white hover:bg-white/10"
                   >
-                    <Copy className="w-4 h-4 mr-2" /> Copia e Cola
+                    <Copy className="w-4 h-4 mr-2" /> Copiar Código Copia e Cola
                   </Button>
                   
-                  <div className="flex items-center gap-4 py-4">
-                    <div className="h-px flex-grow bg-white/10" />
-                    <span className="text-[10px] text-white/20 uppercase tracking-widest">Simulação de Pagamento</span>
-                    <div className="h-px flex-grow bg-white/10" />
+                  <div className="flex items-center justify-center gap-2 pt-6">
+                    <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                    <span className="text-[10px] text-white/20 uppercase tracking-widest font-bold">Aguardando confirmação em tempo real...</span>
                   </div>
+                </div>
+              </motion.div>
+            )}
 
-                  <div className="grid gap-2">
-                    <Button 
-                      disabled={loading}
-                      onClick={() => handleBooking('confirmed')}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white h-12 rounded-xl font-bold"
-                    >
-                      {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Já paguei via PIX"}
-                    </Button>
-
-                    <Button 
-                      variant="ghost"
-                      disabled={loading}
-                      onClick={() => handleBooking('pending')}
-                      className="w-full text-white/60 hover:text-white h-10 rounded-xl text-xs flex items-center justify-center gap-2"
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      Prefiro pagar presencialmente
-                    </Button>
-                  </div>
+            {step === 'payment_card' && (
+              <motion.div
+                key="payment_card"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center space-y-6"
+              >
+                <h3 className="text-xl font-bold text-primary font-serif">Finalize no Cartão</h3>
+                <p className="text-xs text-white/50 px-8">Clique no botão abaixo para abrir o ambiente seguro de pagamento do Asaas.</p>
+                
+                <div className="px-4">
+                  <Button asChild className="w-full h-12 bg-primary text-black font-bold rounded-xl">
+                    <a href={asaasData?.invoiceUrl} target="_blank" rel="noopener noreferrer">Abrir Checkout Asaas</a>
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-center gap-2 pt-6">
+                  <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                  <span className="text-[10px] text-white/20 uppercase tracking-widest font-bold">Monitorando pagamento...</span>
                 </div>
               </motion.div>
             )}
