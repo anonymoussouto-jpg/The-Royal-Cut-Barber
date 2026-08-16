@@ -39,10 +39,15 @@ function LoginPage() {
   const [showResetForm, setShowResetForm] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [registerName, setRegisterName] = useState("");
+  const [registerLoading, setRegisterLoading] = useState(false);
 
   // Debug session state
   useEffect(() => {
-    supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("AUTH_EVENT:", event, session?.user?.id);
       if (event === "SIGNED_IN" && session) {
         toast.success("Autenticado!");
@@ -51,6 +56,7 @@ function LoginPage() {
         }, 500);
       }
     });
+    return () => subscription.unsubscribe();
   }, [navigate, redirect]);
 
   const handleLogin = async (e?: React.FormEvent) => {
@@ -124,6 +130,41 @@ function LoginPage() {
     }
   };
 
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!registerEmail || !registerPassword || !registerName) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
+
+    setRegisterLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: registerEmail,
+        password: registerPassword,
+        options: {
+          data: {
+            full_name: registerName,
+          },
+        },
+      });
+
+      if (error) throw error;
+      
+      if (data.user && data.session) {
+        toast.success("Cadastro realizado com sucesso!");
+        navigate({ to: "/admin" });
+      } else {
+        toast.success("Cadastro iniciado. Verifique seu e-mail para confirmar.");
+        setShowRegisterForm(false);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao realizar cadastro");
+    } finally {
+      setRegisterLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-black p-4 bg-[url('https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80')] bg-cover bg-center">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
@@ -174,6 +215,79 @@ function LoginPage() {
                 Voltar para o Login
               </Button>
             </CardFooter>
+          </>
+        ) : showRegisterForm ? (
+          <>
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center border border-primary/20">
+                  <Scissors className="w-6 h-6 text-primary" />
+                </div>
+              </div>
+              <CardTitle className="text-3xl font-serif font-bold tracking-tight">
+                CRIAR CONTA
+              </CardTitle>
+              <CardDescription className="text-zinc-400">Entre para a irmandade Royal</CardDescription>
+            </CardHeader>
+
+            <form onSubmit={handleRegister} className="space-y-4">
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="register-name">Nome Completo</Label>
+                  <Input
+                    id="register-name"
+                    type="text"
+                    placeholder="Seu nome"
+                    value={registerName}
+                    onChange={(e) => setRegisterName(e.target.value)}
+                    required
+                    className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-email">E-mail</Label>
+                  <Input
+                    id="register-email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    required
+                    className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-password">Senha</Label>
+                  <Input
+                    id="register-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={registerPassword}
+                    onChange={(e) => setRegisterPassword(e.target.value)}
+                    required
+                    className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
+                  />
+                </div>
+              </CardContent>
+
+              <CardFooter className="flex flex-col gap-4">
+                <Button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-12 rounded-xl"
+                  disabled={registerLoading}
+                >
+                  {registerLoading ? "Criando conta..." : "Criar Conta"}
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowRegisterForm(false)}
+                  className="text-xs text-zinc-500 hover:text-primary transition-colors text-center"
+                >
+                  Já tem uma conta? Entre aqui
+                </button>
+              </CardFooter>
+            </form>
           </>
         ) : (
           <>
@@ -235,13 +349,22 @@ function LoginPage() {
                   {loading ? "Verificando..." : "Entrar"}
                 </Button>
 
-                <button
-                  type="button"
-                  onClick={() => setShowResetForm(true)}
-                  className="text-xs text-zinc-500 hover:text-primary transition-colors text-center"
-                >
-                  Esqueci minha senha
-                </button>
+                <div className="flex justify-between w-full px-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowRegisterForm(true)}
+                    className="text-xs text-zinc-500 hover:text-primary transition-colors"
+                  >
+                    Criar conta
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowResetForm(true)}
+                    className="text-xs text-zinc-500 hover:text-primary transition-colors"
+                  >
+                    Esqueci minha senha
+                  </button>
+                </div>
 
                 <div className="relative w-full py-2">
                   <div className="absolute inset-0 flex items-center">
