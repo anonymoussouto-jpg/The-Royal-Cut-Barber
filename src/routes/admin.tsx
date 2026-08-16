@@ -9,7 +9,8 @@ import {
   LogOut,
   ChevronRight,
   ShoppingBag,
-  User
+  User,
+  Crown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -79,6 +80,7 @@ function AdminLayout() {
   const menuItems = [
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { label: "Pedidos Loja", href: "/admin/orders", icon: ShoppingBag },
+    { label: "Assinaturas", href: "/admin/subscriptions", icon: Crown },
     { label: "Agenda", href: "/admin/calendar", icon: Calendar },
     { label: "Clientes CRM", href: "/admin/crm", icon: Users },
     { label: "Equipe", href: "/admin/staff", icon: Scissors },

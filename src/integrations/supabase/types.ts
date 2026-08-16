@@ -278,6 +278,50 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          barber_points_monthly: number
+          client_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          plan_name: string
+          price_paid: number
+          started_at: string
+          status: string
+        }
+        Insert: {
+          barber_points_monthly: number
+          client_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          plan_name: string
+          price_paid: number
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          barber_points_monthly?: number
+          client_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          plan_name?: string
+          price_paid?: number
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_settings: {
         Row: {
           key: string

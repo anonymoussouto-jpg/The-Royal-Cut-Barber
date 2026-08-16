@@ -1,14 +1,39 @@
 import { createFileRoute, Outlet, Link, useLocation } from "@tanstack/react-router";
-import { Scissors, ShoppingBag, Calendar, User, MessageSquare, LayoutDashboard, MapPin, Clock } from "lucide-react";
+import { Scissors, ShoppingBag, Calendar, User, MessageSquare, LayoutDashboard, MapPin, Clock, Crown } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useBooking } from "@/hooks/use-booking";
 import { useChatbot } from "@/hooks/use-chatbot";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   const booking = useBooking();
   const chatbot = useChatbot();
   const location = useLocation();
+
+  const { data: session } = useQuery({
+    queryKey: ['session'],
+    queryFn: async () => {
+      const { data } = await supabase.auth.getSession();
+      return data.session;
+    }
+  });
+
+  const { data: hasSubscription } = useQuery({
+    queryKey: ['has-subscription', session?.user?.id],
+    enabled: !!session?.user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('client_id', session!.user.id)
+        .eq('status', 'active')
+        .maybeSingle();
+      if (error) throw error;
+      return !!data;
+    }
+  });
 
   const isLinkActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -44,6 +69,12 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-4">
+            {hasSubscription && (
+              <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                <Crown className="w-3 h-3" />
+                Membro Royal
+              </div>
+            )}
              <Link to="/admin">
               <Button variant="ghost" size="icon" className="hidden md:flex">
                 <LayoutDashboard className="w-5 h-5" />
