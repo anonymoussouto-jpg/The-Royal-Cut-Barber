@@ -39,23 +39,29 @@ Responda sempre em Português do Brasil.`;
       const setting = settings?.find(s => s.key === key)?.value;
       if (!setting) return null;
       try {
-        return typeof setting === 'string' ? JSON.parse(setting) : setting;
+        const parsed = typeof setting === 'string' ? JSON.parse(setting) : setting;
+        // The admin panel saves strings double-quoted via JSON.stringify(value)
+        // If parsed is still a string, it might have been saved as a JSON string
+        return typeof parsed === 'string' ? parsed : JSON.stringify(parsed).replace(/^"|"$/g, '');
       } catch (e) {
-        return setting;
+        return String(setting).replace(/^"|"$/g, '');
       }
     };
 
+    // Check both naming conventions just in case
     const geminiKeys = [
-      getSetting('gemini_key_1'),
-      getSetting('gemini_key_2'),
-      getSetting('gemini_key_3')
+      getSetting('gemini_api_key_1') || getSetting('gemini_key_1'),
+      getSetting('gemini_api_key_2') || getSetting('gemini_key_2'),
+      getSetting('gemini_api_key_3') || getSetting('gemini_key_3')
     ].filter(Boolean) as string[];
 
     const groqKeys = [
-      getSetting('groq_key_1'),
-      getSetting('groq_key_2'),
-      getSetting('groq_key_3')
+      getSetting('groq_api_key_1') || getSetting('groq_key_1'),
+      getSetting('groq_api_key_2') || getSetting('groq_key_2'),
+      getSetting('groq_api_key_3') || getSetting('groq_key_3')
     ].filter(Boolean) as string[];
+
+    console.log(`Found ${geminiKeys.length} Gemini keys and ${groqKeys.length} Groq keys`);
 
     const history = messages.slice(-10);
 
@@ -64,6 +70,7 @@ Responda sempre em Português do Brasil.`;
     // 3a. Try Gemini Keys
     for (const key of geminiKeys) {
       try {
+        console.log(`Attempting Gemini with key starting: ${key.substring(0, 4)}...`);
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -81,16 +88,23 @@ Responda sempre em Português do Brasil.`;
         if (response.ok) {
           const result = await response.json();
           const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) return { content: text, metadata: null };
+          if (text) {
+            console.log("Gemini success");
+            return { content: text, metadata: null };
+          }
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error(`Gemini API error (${response.status}):`, errorData);
         }
       } catch (error) {
-        console.error("Gemini attempt failed:", error);
+        console.error("Gemini fetch failed:", error);
       }
     }
 
     // 3b. Try Groq Keys
     for (const key of groqKeys) {
       try {
+        console.log(`Attempting Groq with key starting: ${key.substring(0, 4)}...`);
         const response = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
           method: 'POST',
           headers: {
@@ -110,14 +124,21 @@ Responda sempre em Português do Brasil.`;
         if (response.ok) {
           const result = await response.json();
           const text = result.choices?.[0]?.message?.content;
-          if (text) return { content: text, metadata: null };
+          if (text) {
+            console.log("Groq success");
+            return { content: text, metadata: null };
+          }
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error(`Groq API error (${response.status}):`, errorData);
         }
       } catch (error) {
-        console.error("Groq attempt failed:", error);
+        console.error("Groq fetch failed:", error);
       }
     }
 
     // 4. Ultimate Fallback
+    console.log("All AI attempts failed, using ultimate fallback");
     return {
       content: "Olá! No momento estou passando por uma manutenção técnica em meus circuitos, mas o Thiago e a equipe Royal estão prontos para te atender. Como posso ajudar com informações básicas?",
       metadata: null

@@ -22,6 +22,7 @@ export type Database = {
           client_phone: string | null
           created_at: string
           id: string
+          payment_status: string | null
           service_id: string
           start_time: string
           status: string
@@ -34,6 +35,7 @@ export type Database = {
           client_phone?: string | null
           created_at?: string
           id?: string
+          payment_status?: string | null
           service_id: string
           start_time: string
           status?: string
@@ -46,6 +48,7 @@ export type Database = {
           client_phone?: string | null
           created_at?: string
           id?: string
+          payment_status?: string | null
           service_id?: string
           start_time?: string
           status?: string
@@ -204,8 +207,10 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          is_available: boolean
           name: string
           price: number
+          rating: number | null
           stock_quantity: number
         }
         Insert: {
@@ -214,8 +219,10 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          is_available?: boolean
           name: string
           price: number
+          rating?: number | null
           stock_quantity?: number
         }
         Update: {
@@ -224,8 +231,10 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          is_available?: boolean
           name?: string
           price?: number
+          rating?: number | null
           stock_quantity?: number
         }
         Relationships: []
@@ -272,6 +281,7 @@ export type Database = {
           duration_minutes: number
           id: string
           image_url: string | null
+          is_active: boolean
           name: string
           owner_percentage: number | null
           price: number
@@ -284,6 +294,7 @@ export type Database = {
           duration_minutes: number
           id?: string
           image_url?: string | null
+          is_active?: boolean
           name: string
           owner_percentage?: number | null
           price: number
@@ -296,6 +307,7 @@ export type Database = {
           duration_minutes?: number
           id?: string
           image_url?: string | null
+          is_active?: boolean
           name?: string
           owner_percentage?: number | null
           price?: number

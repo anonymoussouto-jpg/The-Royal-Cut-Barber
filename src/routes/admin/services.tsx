@@ -162,7 +162,7 @@ function ServicesManagement() {
         duration_minutes: Number(formData.duration_minutes),
         price: Number(formData.price),
         image_url: formData.image_url,
-        // is_active: formData.is_active // Note: Add this column to DB if needed
+        is_active: formData.is_active
       };
 
       if (editingService) {

@@ -154,8 +154,8 @@ function ProductsManagement() {
         price: Number(formData.price),
         stock_quantity: Number(formData.stock_quantity),
         image_url: formData.image_url,
-        // rating is not a column in DB based on current types, we could add it or ignore
-        // is_available is usually driven by stock_quantity > 0
+        rating: Number(formData.rating),
+        is_available: formData.is_available
       };
 
       if (editingProduct) {

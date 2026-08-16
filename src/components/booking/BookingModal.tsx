@@ -17,7 +17,8 @@ import {
   Loader2,
   Check,
   CreditCard,
-  Wallet
+  Wallet,
+  MessageSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -759,12 +760,25 @@ export function BookingModal() {
                 <p className="text-white/50 mb-8 max-w-[300px]">
                   Sua experiência na The Royal Cut está confirmada. Enviamos os detalhes para seu WhatsApp.
                 </p>
-                <Button 
-                  onClick={close}
-                  className="bg-primary text-primary-foreground px-10 h-12 rounded-full font-bold"
-                >
-                  Concluído
-                </Button>
+                <div className="flex flex-col gap-3 w-full max-w-[300px]">
+                  <Button 
+                    onClick={() => {
+                      const date = selectedDate ? format(selectedDate, "dd/MM", { locale: ptBR }) : "";
+                      const text = `Olá ${clientName}! Seu agendamento na The Royal Cut foi confirmado! ✅ Serviço: ${selectedService?.name} | Data: ${date} às ${selectedTime} | Barbeiro: ${selectedBarber?.full_name}. Até lá! ✂️`;
+                      window.open(`https://wa.me/55${clientPhone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                    }}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl flex items-center justify-center gap-2"
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                    Enviar confirmação no WhatsApp
+                  </Button>
+                  <Button 
+                    onClick={close}
+                    className="w-full bg-primary text-primary-foreground h-12 rounded-xl font-bold"
+                  >
+                    Concluído
+                  </Button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

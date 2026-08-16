@@ -357,10 +357,22 @@ function CRMPage() {
                 </div>
               </ScrollArea>
               
-              <div className="p-6 mt-auto border-t border-border/20 bg-black/40">
+              <div className="p-6 mt-auto border-t border-border/20 bg-black/40 space-y-3">
+                <Button 
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl flex items-center justify-center gap-2"
+                  onClick={() => {
+                    if (selectedClient.phone) {
+                      const text = `Olá ${selectedClient.full_name}! Faz um tempo que não te vemos na The Royal Cut. Que tal agendar seu próximo corte? Thiago 🙏`;
+                      window.open(`https://wa.me/55${selectedClient.phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                    } else toast.error("Telefone não cadastrado");
+                  }}
+                >
+                  <Phone className="w-5 h-5" />
+                  Enviar Mensagem de Reativação
+                </Button>
                 <Button 
                   variant="outline" 
-                  className="w-full border-primary/20 text-primary hover:bg-primary/10"
+                  className="w-full border-white/10 text-white/60 hover:text-white h-12 rounded-xl"
                   onClick={() => setSelectedClient(null)}
                 >
                   Fechar Ficha

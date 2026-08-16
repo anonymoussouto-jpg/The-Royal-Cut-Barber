@@ -51,7 +51,10 @@ function GroomingStore() {
 
   const fetchProducts = async () => {
     try {
-      const { data, error } = await supabase.from("products").select("*");
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_available", true);
       if (error) throw error;
       setProducts(data || []);
     } catch (error) {

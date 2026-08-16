@@ -252,6 +252,15 @@ function AdminSettings() {
                     onChange={(e) => saveSetting('pix_key', e.target.value)}
                   />
                 </div>
+                <div className="grid gap-2">
+                  <Label>WhatsApp da Barbearia (Público)</Label>
+                  <Input 
+                    placeholder="Ex: 11999999999" 
+                    value={settings['whatsapp_number'] || ''}
+                    onChange={(e) => saveSetting('whatsapp_number', e.target.value)}
+                  />
+                  <p className="text-[10px] text-muted-foreground">Número para o botão flutuante no site (apenas números com DDD).</p>
+                </div>
                 <Button onClick={handleSaveAll} className="bg-primary text-primary-foreground">Salvar Alterações</Button>
               </CardContent>
             </Card>

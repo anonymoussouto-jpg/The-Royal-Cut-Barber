@@ -143,25 +143,38 @@ function AdminCalendar() {
 
     try {
       const service = services.find(s => s.id === walkInData.service_id);
-      const guestId = uuidv4();
       
-      const { error: profileError } = await supabase
+      // Upsert profile based on phone
+      let clientId: string;
+      const { data: existingProfile } = await supabase
         .from('profiles')
-        .insert({
-          id: guestId,
-          full_name: walkInData.client_name,
-          phone: walkInData.phone || null,
-          is_guest: true
-        });
-      
-      if (profileError) throw profileError;
+        .select('id')
+        .eq('phone', walkInData.phone)
+        .maybeSingle();
+
+      if (existingProfile) {
+        clientId = existingProfile.id;
+      } else {
+        const newId = uuidv4();
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: newId,
+            full_name: walkInData.client_name,
+            phone: walkInData.phone || null,
+            is_guest: true
+          });
+        if (profileError) throw profileError;
+        clientId = newId;
+      }
 
       const appToInsert: any = {
-        client_id: guestId,
+        client_id: clientId,
         barber_id: walkInData.barber_id,
         service_id: walkInData.service_id,
         start_time: new Date().toISOString(),
         status: 'confirmed',
+        payment_status: 'pending',
         total_price: service.price,
         client_name: walkInData.client_name,
         client_phone: walkInData.phone || null
@@ -490,11 +503,14 @@ function AdminCalendar() {
                               className="flex items-center gap-2 py-3 cursor-pointer hover:bg-white/5"
                               onClick={() => {
                                 const phone = app.profiles?.phone || app.client_phone;
-                                if (phone) window.open(`https://wa.me/55${phone.replace(/\D/g, '')}`, '_blank');
-                                else toast.error("Telefone não cadastrado");
+                                const name = app.profiles?.full_name || app.client_name || "Cliente";
+                                if (phone) {
+                                  const text = `Olá ${name}, lembrete: seu horário na The Royal Cut é em breve. Confirma presença? ✂️`;
+                                  window.open(`https://wa.me/55${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                                } else toast.error("Telefone não cadastrado");
                               }}
                             >
-                              <Phone className="w-4 h-4 text-white/60" /> Contato WhatsApp
+                              <Phone className="w-4 h-4 text-white/60" /> 📱 WhatsApp
                             </DropdownMenuItem>
 
                             {app.status !== 'cancelled' && (

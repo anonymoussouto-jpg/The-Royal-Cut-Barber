@@ -35,7 +35,10 @@ function ServicesPage() {
 
   const fetchServices = async () => {
     try {
-      const { data, error } = await supabase.from("services").select("*");
+      const { data, error } = await supabase
+        .from("services")
+        .select("*")
+        .eq("is_active", true);
       if (error) throw error;
       setServices(data || []);
     } catch (error) {

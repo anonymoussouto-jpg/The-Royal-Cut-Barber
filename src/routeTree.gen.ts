@@ -14,6 +14,8 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as BarberRouteImport } from './routes/barber'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MembershipRouteImport } from './routes/membership'
+import { Route as PerfilRouteImport } from './routes/perfil'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ServicesRouteImport } from './routes/services'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
@@ -55,6 +57,16 @@ const LoginRoute = LoginRouteImport.update({
 const MembershipRoute = MembershipRouteImport.update({
   id: '/membership',
   path: '/membership',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerfilRoute = PerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ServicesRoute = ServicesRouteImport.update({
@@ -149,6 +161,8 @@ export interface FileRoutesByFullPath {
   '/barber': typeof BarberRouteWithChildren
   '/login': typeof LoginRoute
   '/membership': typeof MembershipRoute
+  '/perfil': typeof PerfilRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/services': typeof ServicesRoute
   '/shop': typeof ShopRoute
   '/admin/calendar': typeof AdminCalendarRoute
@@ -172,6 +186,8 @@ export interface FileRoutesByTo {
   '/barber': typeof BarberRouteWithChildren
   '/login': typeof LoginRoute
   '/membership': typeof MembershipRoute
+  '/perfil': typeof PerfilRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/services': typeof ServicesRoute
   '/shop': typeof ShopRoute
   '/admin/calendar': typeof AdminCalendarRoute
@@ -197,6 +213,8 @@ export interface FileRoutesById {
   '/barber': typeof BarberRouteWithChildren
   '/login': typeof LoginRoute
   '/membership': typeof MembershipRoute
+  '/perfil': typeof PerfilRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/services': typeof ServicesRoute
   '/shop': typeof ShopRoute
   '/admin/calendar': typeof AdminCalendarRoute
@@ -223,6 +241,8 @@ export interface FileRouteTypes {
     | '/barber'
     | '/login'
     | '/membership'
+    | '/perfil'
+    | '/reset-password'
     | '/services'
     | '/shop'
     | '/admin/calendar'
@@ -246,6 +266,8 @@ export interface FileRouteTypes {
     | '/barber'
     | '/login'
     | '/membership'
+    | '/perfil'
+    | '/reset-password'
     | '/services'
     | '/shop'
     | '/admin/calendar'
@@ -270,6 +292,8 @@ export interface FileRouteTypes {
     | '/barber'
     | '/login'
     | '/membership'
+    | '/perfil'
+    | '/reset-password'
     | '/services'
     | '/shop'
     | '/admin/calendar'
@@ -295,6 +319,8 @@ export interface RootRouteChildren {
   BarberRoute: typeof BarberRouteWithChildren
   LoginRoute: typeof LoginRoute
   MembershipRoute: typeof MembershipRoute
+  PerfilRoute: typeof PerfilRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ServicesRoute: typeof ServicesRoute
   ShopRoute: typeof ShopRoute
   ApiPublicAsaasWebhookRoute: typeof ApiPublicAsaasWebhookRoute
@@ -335,6 +361,20 @@ declare module '@tanstack/react-router' {
       path: '/membership'
       fullPath: '/membership'
       preLoaderRoute: typeof MembershipRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/perfil': {
+      id: '/perfil'
+      path: '/perfil'
+      fullPath: '/perfil'
+      preLoaderRoute: typeof PerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/services': {
@@ -510,6 +550,8 @@ const rootRouteChildren: RootRouteChildren = {
   BarberRoute: BarberRouteWithChildren,
   LoginRoute: LoginRoute,
   MembershipRoute: MembershipRoute,
+  PerfilRoute: PerfilRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ServicesRoute: ServicesRoute,
   ShopRoute: ShopRoute,
   ApiPublicAsaasWebhookRoute: ApiPublicAsaasWebhookRoute,

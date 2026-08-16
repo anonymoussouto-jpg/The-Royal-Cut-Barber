@@ -62,13 +62,13 @@ export const Route = createFileRoute('/api/public/asaas-webhook')({
                 .from('appointments')
                 .update({ 
                   status: 'confirmed',
-                  // Map paid_at/net_value if we add columns later, but for now just status
+                  payment_status: 'paid'
                 })
                 .eq('id', orderId);
             }
           } else if (event === 'PAYMENT_REFUNDED') {
             await supabase.from('orders').update({ status: 'REFUNDED' }).eq('id', orderId);
-            await supabase.from('appointments').update({ status: 'cancelled' }).eq('id', orderId);
+            await supabase.from('appointments').update({ status: 'cancelled', payment_status: 'refunded' }).eq('id', orderId);
           } else if (event === 'PAYMENT_OVERDUE') {
             await supabase.from('orders').update({ status: 'OVERDUE' }).eq('id', orderId);
             // We don't automatically cancel appointments for overdue, let admin decide

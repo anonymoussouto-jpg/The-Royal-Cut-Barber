@@ -1,17 +1,26 @@
 import { createFileRoute, Outlet, Link, useLocation } from "@tanstack/react-router";
-import { Scissors, ShoppingBag, Calendar, User, MessageSquare, LayoutDashboard, MapPin, Clock, Crown } from "lucide-react";
+import { Scissors, ShoppingBag, Calendar, User, MessageSquare, LayoutDashboard, MapPin, Clock, Crown, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useBooking } from "@/hooks/use-booking";
 import { useChatbot } from "@/hooks/use-chatbot";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   const booking = useBooking();
   const chatbot = useChatbot();
   const location = useLocation();
 
+  const queryClient = useQueryClient();
   const { data: session } = useQuery({
     queryKey: ['session'],
     queryFn: async () => {
@@ -20,18 +29,45 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
     }
   });
 
+  const { data: profile } = useQuery({
+    queryKey: ['profile', session?.user?.id],
+    enabled: !!session?.user?.id,
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('*').eq('id', session!.user.id).single();
+      return data;
+    }
+  });
+
   const { data: hasSubscription } = useQuery({
     queryKey: ['has-subscription', session?.user?.id],
     enabled: !!session?.user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('subscriptions')
         .select('id')
         .eq('client_id', session!.user.id)
         .eq('status', 'active')
         .maybeSingle();
-      if (error) throw error;
       return !!data;
+    }
+  });
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    queryClient.invalidateQueries({ queryKey: ['session'] });
+    window.location.href = '/';
+  };
+
+  const { data: whatsappNumber } = useQuery({
+    queryKey: ['whatsapp-number'],
+    queryFn: async () => {
+      const { data } = await supabase.from('system_settings').select('value').eq('key', 'whatsapp_number').maybeSingle();
+      if (!data) return null;
+      try {
+        return JSON.parse(data.value as string);
+      } catch {
+        return data.value;
+      }
     }
   });
 
@@ -91,11 +127,50 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
                 <span className="hidden lg:inline">Membro Royal</span>
               </div>
             )}
-             <Link to="/admin" className="hidden sm:block">
-              <Button variant="ghost" size="icon">
-                <LayoutDashboard className="w-5 h-5" />
-              </Button>
-            </Link>
+             {session ? (
+               <DropdownMenu>
+                 <DropdownMenuTrigger asChild>
+                   <Button variant="ghost" className="relative h-10 w-10 rounded-full border border-primary/20 bg-primary/10">
+                     <span className="text-primary font-bold">
+                       {profile?.full_name?.charAt(0) || <User className="w-5 h-5" />}
+                     </span>
+                   </Button>
+                 </DropdownMenuTrigger>
+                 <DropdownMenuContent className="w-56 bg-zinc-950 border-white/10 text-white" align="end">
+                   <DropdownMenuLabel className="font-serif">Minha Conta</DropdownMenuLabel>
+                   <DropdownMenuSeparator className="bg-white/5" />
+                   <Link to="/perfil">
+                     <DropdownMenuItem className="cursor-pointer focus:bg-primary focus:text-black">
+                       <User className="mr-2 h-4 w-4" />
+                       <span>Meu Perfil</span>
+                     </DropdownMenuItem>
+                   </Link>
+                   <Link to="/perfil">
+                     <DropdownMenuItem className="cursor-pointer focus:bg-primary focus:text-black">
+                       <Calendar className="mr-2 h-4 w-4" />
+                       <span>Meus Agendamentos</span>
+                     </DropdownMenuItem>
+                   </Link>
+                   <Link to="/membership">
+                     <DropdownMenuItem className="cursor-pointer focus:bg-primary focus:text-black">
+                       <Crown className="mr-2 h-4 w-4" />
+                       <span>Minha Assinatura</span>
+                     </DropdownMenuItem>
+                   </Link>
+                   <DropdownMenuSeparator className="bg-white/5" />
+                   <DropdownMenuItem className="cursor-pointer text-red-500 focus:bg-red-500 focus:text-white" onClick={handleSignOut}>
+                     <LogOut className="mr-2 h-4 w-4" />
+                     <span>Sair</span>
+                   </DropdownMenuItem>
+                 </DropdownMenuContent>
+               </DropdownMenu>
+             ) : (
+               <Link to="/login">
+                 <Button variant="ghost" size="icon" className="text-white/50 hover:text-white">
+                   <User className="w-5 h-5" />
+                 </Button>
+               </Link>
+             )}
             <Button onClick={() => booking.open()} className="hidden sm:flex bg-primary text-primary-foreground hover:bg-primary/90">
               Agendar Agora
             </Button>
@@ -139,6 +214,21 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
         </div>
       </footer>
 
+      {/* WhatsApp Floating Button */}
+      {whatsappNumber && (
+        <a
+          href={`https://wa.me/55${whatsappNumber.replace(/\D/g, '')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-24 right-6 z-50 p-4 bg-green-500 text-white rounded-full shadow-2xl shadow-green-500/20 hover:bg-green-600 hover:scale-110 transition-all duration-300 md:bottom-6"
+          title="Fale conosco no WhatsApp"
+        >
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.937 3.659 1.43 5.623 1.43h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+        </a>
+      )}
+
       {/* Mobile Sticky Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border/40 px-4 py-2">
         <div className="flex items-center justify-between max-w-md mx-auto h-14">
@@ -157,9 +247,9 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
 
-          <Link to="/membership" className={`flex flex-col items-center justify-center gap-1 w-full min-w-[44px] min-h-[44px] transition-colors ${isLinkActive('/membership') ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}>
+          <Link to={session ? "/perfil" : "/login"} className={`flex flex-col items-center justify-center gap-1 w-full min-w-[44px] min-h-[44px] transition-colors ${isLinkActive('/perfil') || isLinkActive('/login') ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}>
             <User className="w-5 h-5" />
-            <span className="text-[9px] font-bold uppercase">Clube</span>
+            <span className="text-[9px] font-bold uppercase">{session ? 'Perfil' : 'Entrar'}</span>
           </Link>
           <button onClick={() => chatbot.open()} className="flex flex-col items-center justify-center gap-1 w-full min-w-[44px] min-h-[44px] text-muted-foreground hover:text-primary">
             <MessageSquare className="w-5 h-5" />

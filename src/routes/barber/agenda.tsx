@@ -14,7 +14,8 @@ import {
   Loader2,
   Zap,
   DollarSign,
-  TrendingUp
+  TrendingUp,
+  Phone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -139,21 +140,33 @@ function BarberAgenda() {
 
     try {
       const service = services.find(s => s.id === walkInData.service_id);
-      const guestId = uuidv4();
       
-      const { error: profileError } = await supabase
+      // Upsert profile based on phone
+      let clientId: string;
+      const { data: existingProfile } = await supabase
         .from('profiles')
-        .insert({
-          id: guestId,
-          full_name: walkInData.client_name,
-          phone: walkInData.phone || null,
-          is_guest: true
-        });
-      
-      if (profileError) throw profileError;
+        .select('id')
+        .eq('phone', walkInData.phone)
+        .maybeSingle();
+
+      if (existingProfile) {
+        clientId = existingProfile.id;
+      } else {
+        const newId = uuidv4();
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: newId,
+            full_name: walkInData.client_name,
+            phone: walkInData.phone || null,
+            is_guest: true
+          });
+        if (profileError) throw profileError;
+        clientId = newId;
+      }
 
           const appToInsert: any = {
-            client_id: guestId,
+            client_id: clientId,
             barber_id: barber.id,
             service_id: walkInData.service_id,
             start_time: new Date().toISOString(),
@@ -182,8 +195,11 @@ function BarberAgenda() {
   };
 
   const getStatusBadge = (status: string, paymentStatus: string) => {
-    if (status === 'confirmed' && paymentStatus === 'PAID') {
+    if (status === 'completed' || paymentStatus === 'paid') {
       return <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] font-black tracking-widest px-2 py-0.5">PAGO</Badge>;
+    }
+    if (status === 'cancelled') {
+      return <Badge className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] font-black tracking-widest px-2 py-0.5">CANCELADO</Badge>;
     }
     if (paymentStatus === 'pending') {
       return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[10px] font-black tracking-widest px-2 py-0.5">PENDENTE</Badge>;
@@ -337,9 +353,26 @@ function BarberAgenda() {
                   
                   <div className="flex flex-col items-center gap-2">
                     {getStatusBadge(app.status, app.payment_status || 'pending')}
-                    <Button variant="outline" size="sm" className="bg-transparent border-white/5 hover:bg-primary hover:text-black hover:border-primary transition-all rounded-xl h-8 px-4 text-[9px] font-black uppercase tracking-widest">
-                      Detalhes
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-transparent border-white/5 hover:bg-green-600 hover:text-white hover:border-green-600 transition-all rounded-xl h-8 px-3 text-[9px] font-black uppercase tracking-widest"
+                        onClick={() => {
+                          const phone = app.client?.phone || app.client_phone;
+                          const name = app.client?.full_name || app.client_name || "Cliente";
+                          if (phone) {
+                            const text = `Olá ${name}, lembrete: seu horário na The Royal Cut é em breve. Confirma presença? ✂️`;
+                            window.open(`https://wa.me/55${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                          } else toast.error("Telefone não informado");
+                        }}
+                      >
+                        <Phone className="w-3 h-3 mr-1" /> WhatsApp
+                      </Button>
+                      <Button variant="outline" size="sm" className="bg-transparent border-white/5 hover:bg-primary hover:text-black hover:border-primary transition-all rounded-xl h-8 px-4 text-[9px] font-black uppercase tracking-widest">
+                        Detalhes
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
