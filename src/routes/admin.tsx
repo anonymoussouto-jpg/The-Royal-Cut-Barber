@@ -22,13 +22,15 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ location }) => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    console.log("Admin beforeLoad session check:", !!session);
+    // We do NOT use await getSession here because it can cause race conditions 
+    // or hydration mismatches during routing transitions in TanStack.
+    // However, beforeLoad is where we enforce access.
+    
+    // Check session directly
+    const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
+      console.log("Admin Protection: No session, redirecting to login");
       throw redirect({
         to: "/login",
         search: {
