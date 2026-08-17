@@ -111,7 +111,7 @@ function LoginPage() {
       });
 
       if (error) {
-        addLog(`Falha na autenticação: ${error.message} (Status: ${error.status})`);
+        addLog(`FALHA AUTH: ${error.message} (Status: ${error.status})`);
         console.error("AUTH_ERROR:", error);
         
         // Enhanced logging for diagnostics
@@ -139,6 +139,12 @@ function LoginPage() {
 
       addLog("Login bem-sucedido via Supabase Auth.");
       console.log("AUTH_SUCCESS:", data.user?.id);
+      
+      // Auto-redirect if onAuthStateChange doesn't trigger fast enough
+      setTimeout(() => {
+        navigate({ to: (redirect as any) || "/admin" });
+      }, 500);
+      
     } catch (error: any) {
       addLog(`Erro crítico: ${error.message}`);
       console.error("CRITICAL_AUTH_ERROR:", error);
