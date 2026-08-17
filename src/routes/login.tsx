@@ -82,14 +82,24 @@ function LoginPage() {
       if (error) {
         console.error("AUTH_ERROR:", error);
         
+        // Enhanced logging for diagnostics
+        console.error("AUTH_DIAGNOSTIC:", {
+          status: error.status,
+          message: error.message,
+          code: (error as any).code,
+          name: error.name
+        });
+        
         // Specific feedback for potential role issues or database schema errors (500)
         if (error.message.includes("Database error") || error.status === 500) {
-          toast.error("Erro no servidor ao verificar permissões. Tente novamente em instantes.");
+          toast.error("Falha na conexão com o banco de dados. Isso pode ser um problema temporário nas permissões da tabela profiles ou user_roles.");
+        } else if (error.message.includes("Email not confirmed")) {
+          toast.error("E-mail ainda não confirmado. Verifique sua caixa de entrada.");
         } else {
           toast.error(
             error.message === "Invalid login credentials"
-              ? "E-mail ou senha incorretos"
-              : error.message,
+              ? "Credenciais inválidas. Verifique se o e-mail e a senha estão corretos."
+              : `Erro de acesso: ${error.message}`,
           );
         }
         return;
@@ -338,7 +348,7 @@ function LoginPage() {
                 '''Do not make any visual modifications. The phrases I write are commands to understand what I want, not to be written down. Understand their content well, then execute what is required.'''
                                         
                                             
-                                            As credenciais de administrador configuradas no sistema são: admin@theroyalcut.com e a senha é RoyalAdmin2026!. Atualizei o texto técnico no formulário para refletir essas informações e garantir que você tenha os dados corretos para acesso. nao deu certo ainda
+                                            Adicionar logs detalhados e uma mensagem de erro amigável na tela de login para eu identificar por que a senha não é aceita.
               </div>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
