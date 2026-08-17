@@ -119,25 +119,6 @@ REGRAS:
       if (aiMaxChars) finalSystemPrompt += `\n- REGRA: Não ultrapasse ${aiMaxChars} caracteres.`;
       if (aiMaxMessages) finalSystemPrompt += `\n- REGRA: Limite a no máximo ${aiMaxMessages} blocos.`;
 
-      const geminiKey = extractKey(settings?.find(s => s.key === 'gemini_api_key_1' || s.key === 'gemini_key_1')?.value);
-      const groqKey = extractKey(settings?.find(s => s.key === 'groq_api_key_1' || s.key === 'groq_key_1')?.value);
-
-      const extractKey = (val: any) => {
-        if (!val) return undefined;
-        try {
-          // If it's a JSON string, try to parse it
-          const parsed = typeof val === 'string' && (val.startsWith('{') || val.startsWith('[')) ? JSON.parse(val) : val;
-          // If the result is still a string (common in Supabase JSONB), clean it up
-          const cleanStr = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
-          return cleanStr.replace(/^"|"$/g, '').trim();
-        } catch { 
-          return String(val).replace(/^"|"$/g, '').trim(); 
-        }
-      };
-
-      const geminiKey = extractKey(settings?.find(s => s.key === 'gemini_api_key_1' || s.key === 'gemini_key_1')?.value);
-      const groqKey = extractKey(settings?.find(s => s.key === 'groq_api_key_1' || s.key === 'groq_key_1')?.value);
-      
       console.log("Chatbot: API Keys check", { 
         hasGemini: !!geminiKey, 
         hasGroq: !!groqKey,
