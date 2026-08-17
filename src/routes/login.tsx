@@ -348,7 +348,7 @@ function LoginPage() {
                 '''Do not make any visual modifications. The phrases I write are commands to understand what I want, not to be written down. Understand their content well, then execute what is required.'''
                                         
                                             
-                                            Adicionar logs detalhados e uma mensagem de erro amigável na tela de login para eu identificar por que a senha não é aceita.
+                                            Falha na conexão com o banco de dados. Isso pode ser um problema temporário nas permissões da tabela profiles ou user_roles.
               </div>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
