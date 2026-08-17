@@ -269,6 +269,49 @@ function AdminSettings() {
                     ))}
                   </div>
                 </div>
+
+                <div className="grid gap-4 pt-4 border-t border-border/40">
+                  <Label className="text-primary font-bold">Comportamento da IA</Label>
+                  <div className="space-y-2">
+                    <Label>Prompt do Systema (Regras de Atendimento)</Label>
+                    <textarea
+                      className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      placeholder="Ex: Responda de forma humanizada, seja educado..."
+                      value={settings["ai_system_prompt"] || ""}
+                      onChange={(e) => saveSetting("ai_system_prompt", e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Delay na Resposta (ms)</Label>
+                      <Input
+                        type="number"
+                        placeholder="Ex: 20"
+                        value={settings["ai_response_delay_ms"] || "20"}
+                        onChange={(e) => saveSetting("ai_response_delay_ms", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Máximo de Caracteres</Label>
+                      <Input
+                        type="number"
+                        placeholder="Ex: 150"
+                        value={settings["ai_max_chars"] || "150"}
+                        onChange={(e) => saveSetting("ai_max_chars", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Mensagens por Pergunta</Label>
+                      <Input
+                        type="number"
+                        placeholder="Ex: 3"
+                        value={settings["ai_max_messages"] || "3"}
+                        onChange={(e) => saveSetting("ai_max_messages", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/20">
                   <div className="space-y-0.5">
                     <Label>Alternância Automática</Label>

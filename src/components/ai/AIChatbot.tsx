@@ -65,7 +65,40 @@ export function AIChatbot() {
         supabase.from('barbers').select('*')
       ]);
 
-      const systemPrompt = `Você é a Royal IA, assistente virtual da The Royal Cut - Barbearia e Irmandade.
+      // 2. Fetch API keys and AI behavior settings
+      const { data: settings } = await supabase
+        .from('system_settings')
+        .select('key, value')
+        .in('key', [
+          'gemini_api_key_1', 
+          'gemini_key_1', 
+          'groq_api_key_1', 
+          'groq_key_1',
+          'ai_system_prompt',
+          'ai_response_delay_ms',
+          'ai_max_chars',
+          'ai_max_messages'
+        ]);
+
+      const extractKey = (val: any) => {
+        if (!val) return undefined;
+        try {
+          // If it's a JSON string, try to parse it
+          const parsed = typeof val === 'string' && (val.startsWith('{') || val.startsWith('[')) ? JSON.parse(val) : val;
+          // If the result is still a string (common in Supabase JSONB), clean it up
+          const cleanStr = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
+          return cleanStr.replace(/^"|"$/g, '').trim();
+        } catch { 
+          return String(val).replace(/^"|"$/g, '').trim(); 
+        }
+      };
+
+      const aiSystemPrompt = extractKey(settings?.find(s => s.key === 'ai_system_prompt')?.value);
+      const aiResponseDelay = parseInt(extractKey(settings?.find(s => s.key === 'ai_response_delay_ms')?.value) || "20", 10);
+      const aiMaxChars = extractKey(settings?.find(s => s.key === 'ai_max_chars')?.value);
+      const aiMaxMessages = extractKey(settings?.find(s => s.key === 'ai_max_messages')?.value);
+
+      let finalSystemPrompt = aiSystemPrompt || `Você é a Royal IA, assistente virtual da The Royal Cut - Barbearia e Irmandade.
 Sua missão é atender com excelência, honra e cavalheirismo.
 A barbearia é de propriedade do Thiago. O Thiago, além de ser o dono, também é barbeiro, atende clientes e possui agenda disponível para serviços.
 
@@ -83,11 +116,11 @@ REGRAS:
 - Se o cliente perguntar sobre o endereço ou contato, informe que os dados estão no rodapé do site.
 - Mantenha respostas concisas e amigáveis.`;
 
-      // 2. Fetch API keys
-      const { data: settings } = await supabase
-        .from('system_settings')
-        .select('key, value')
-        .in('key', ['gemini_api_key_1', 'gemini_key_1', 'groq_api_key_1', 'groq_key_1']);
+      if (aiMaxChars) finalSystemPrompt += `\n- REGRA: Não ultrapasse ${aiMaxChars} caracteres.`;
+      if (aiMaxMessages) finalSystemPrompt += `\n- REGRA: Limite a no máximo ${aiMaxMessages} blocos.`;
+
+      const geminiKey = extractKey(settings?.find(s => s.key === 'gemini_api_key_1' || s.key === 'gemini_key_1')?.value);
+      const groqKey = extractKey(settings?.find(s => s.key === 'groq_api_key_1' || s.key === 'groq_key_1')?.value);
 
       const extractKey = (val: any) => {
         if (!val) return undefined;
@@ -128,6 +161,10 @@ REGRAS:
       );
 
       const fetchAIResponse = async () => {
+        if (aiResponseDelay > 0) {
+          await new Promise(resolve => setTimeout(resolve, aiResponseDelay));
+        }
+        
         // 4. Try Gemini
         if (geminiKey) {
           try {
@@ -147,7 +184,7 @@ REGRAS:
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 contents: geminiHistory,
-                systemInstruction: { parts: [{ text: systemPrompt }] }
+                systemInstruction: { parts: [{ text: finalSystemPrompt }] }
               })
             });
 
@@ -189,7 +226,7 @@ REGRAS:
               body: JSON.stringify({
                 model: 'llama-3.3-70b-versatile',
                 messages: [
-                  { role: 'system', content: systemPrompt },
+                  { role: 'system', content: finalSystemPrompt },
                   ...history.map(m => ({ role: m.role, content: m.content }))
                 ]
               })
