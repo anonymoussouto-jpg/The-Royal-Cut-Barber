@@ -22,39 +22,23 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ location }) => {
-    // We do NOT use await getSession here because it can cause race conditions 
-    // or hydration mismatches during routing transitions in TanStack.
-    // However, beforeLoad is where we enforce access.
-    
-    // Check session directly
-    const { data: { session } } = await supabase.auth.getSession();
+    // Apenas no cliente
+    if (typeof window === "undefined") return;
 
-    if (!session) {
-      console.log("Admin Protection: No session, redirecting to login");
-      throw redirect({
-        to: "/login",
-        search: {
-          redirect: location.href,
-        },
-      });
-    }
+    // Tenta obter o usuário verificado
+    const { data: { user }, error } = await supabase.auth.getUser();
 
-    // Attempt admin check via RPC
-    try {
-      const { data: isAdmin, error } = await supabase.rpc('has_role', {
-        _user_id: session.user.id,
-        _role: 'admin'
-      });
-
-      console.log("Admin RPC check result:", isAdmin, "Error:", error);
-
-      if (error || isAdmin === false) {
-        console.warn("User is not an admin, redirecting to home");
-        throw redirect({ to: "/" });
+    if (error || !user) {
+      // Pequeno retry caso o Supabase ainda esteja carregando o token do localStorage
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const { data: { user: retryUser } } = await supabase.auth.getUser();
+      
+      if (!retryUser) {
+        throw redirect({
+          to: "/login",
+          search: { redirect: location.href },
+        });
       }
-    } catch (e) {
-      // In preview, if RPC fails but we have a session, we might allow bypass if it crashes
-      console.warn("Admin check exception:", e);
     }
   },
   component: AdminLayout,
@@ -69,9 +53,6 @@ function AdminLayout() {
   } | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    setIsSidebarOpen(false);
-  }, [currentPath]);
 
   useEffect(() => {
     const fetchAdminProfile = async () => {

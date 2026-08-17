@@ -3,7 +3,7 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
 export const createAsaasPayment = createServerFn({ method: "POST" })
-  .inputValidator((data) =>
+  .validator((data: unknown) =>
     z
       .object({
         orderId: z.string(),

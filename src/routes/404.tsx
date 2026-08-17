@@ -5,9 +5,13 @@ import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/404")({
   head: () => ({
+    title: "Página Não Encontrada | The Royal Cut",
     meta: [
-      { title: "Página Não Encontrada | The Royal Cut" }
-    ] as any,
+      {
+        name: "description",
+        content: "Desculpe, a página que você procura não foi encontrada. Volte para o início da The Royal Cut.",
+      },
+    ],
   }),
   component: NotFoundPage,
 });

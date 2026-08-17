@@ -17,12 +17,12 @@ export const Route = createFileRoute("/shop")({
     meta: [
       {
         name: "description",
-        content: "Produtos de alta qualidade selecionados para manter sua imagem com dignidade e cuidado. Explore nossa loja.",
+        content: "Produtos exclusivos para o cuidado do cavalheiro. Mantenha sua imagem com a qualidade e o rigor da The Royal Cut.",
       },
       { property: "og:title", content: "Grooming Store | The Royal Cut" },
       {
         property: "og:description",
-        content: "Seleção de excelência em produtos para o cavalheiro moderno.",
+        content: "Produtos exclusivos para o cuidado do cavalheiro. Mantenha sua imagem com a qualidade e o rigor da The Royal Cut.",
       },
     ],
   }),

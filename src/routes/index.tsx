@@ -25,16 +25,16 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
-    title: "The Royal Cut | Barbearia e Irmandade",
+    title: "The Royal Cut | Excelência, Honra e Irmandade",
     meta: [
       {
         name: "description",
-        content: "Mais que um corte. Uma missão. Conheça a The Royal Cut, um espaço de honra e excelência guiado pela fé e pelo cavalheirismo.",
+        content: "Mais que um corte, uma missão. The Royal Cut: Barbearia premium onde a tradição do cavalheirismo encontra a excelência guiada pela fé.",
       },
-      { property: "og:title", content: "The Royal Cut | Barbearia e Irmandade" },
+      { property: "og:title", content: "The Royal Cut | Excelência, Honra e Irmandade" },
       {
         property: "og:description",
-        content: "Espaço de honra, excelência e irmandade. Agende seu horário na melhor barbearia premium.",
+        content: "Mais que um corte, uma missão. The Royal Cut: Barbearia premium onde a tradição do cavalheirismo encontra a excelência guiada pela fé.",
       },
       {
         property: "og:image",

@@ -1,0 +1,1 @@
+UPDATE auth.users SET email = 'old_admin@theroyalcut.com' WHERE email = 'admin@theroyalcut.com';

@@ -22,16 +22,16 @@ import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/membership")({
   head: () => ({
-    title: "Clube de Irmandade | The Royal Cut",
+    title: "Membro Fiel e Alianças | The Royal Cut",
     meta: [
       {
         name: "description",
-        content: "Junte-se à nossa aliança e desfrute de benefícios exclusivos, cortes ilimitados e Barber Points.",
+        content: "Junte-se à nossa irmandade. Escolha seu plano de assinatura e desfrute de benefícios exclusivos e cortes ilimitados.",
       },
-      { property: "og:title", content: "Clube de Irmandade | The Royal Cut" },
+      { property: "og:title", content: "Membro Fiel e Alianças | The Royal Cut" },
       {
         property: "og:description",
-        content: "Transforme seu cuidado pessoal em um momento de honra e fraternidade constante.",
+        content: "Junte-se à nossa irmandade. Escolha seu plano de assinatura e desfrute de benefícios exclusivos e cortes ilimitados.",
       },
     ],
   }),

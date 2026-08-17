@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,13 +12,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Home } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
-    meta: [{ title: "Entrar | The Royal Cut" }] as any,
+    title: "Entrar | The Royal Cut",
+    meta: [
+      {
+        name: "description",
+        content: "Acesse sua conta na The Royal Cut para gerenciar seus agendamentos e Barber Points.",
+      },
+    ],
   }),
   validateSearch: z.object({
     redirect: z.string().optional(),
@@ -34,13 +40,6 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [dbStatus, setDbStatus] = useState<"online" | "offline" | "checking">("checking");
-  const [authLogs, setAuthLogs] = useState<string[]>([]);
-
-  const addLog = (msg: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    setAuthLogs((prev) => [`[${timestamp}] ${msg}`, ...prev].slice(0, 20));
-    console.log(`[LOGIN_LOG] ${msg}`);
-  };
 
   useEffect(() => {
     const checkDB = async () => {
@@ -48,30 +47,36 @@ function LoginPage() {
         const { error } = await supabase.from("services").select("id").limit(1);
         if (error) throw error;
         setDbStatus("online");
-        addLog("Conectado ao Banco");
       } catch (e: any) {
         setDbStatus("offline");
-        addLog(`Erro Banco: ${e.message}`);
       }
     };
     checkDB();
   }, []);
 
   useEffect(() => {
+    let redirecting = false;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      addLog(`Auth Event: ${event}`);
-      if (session && (event === "SIGNED_IN" || event === "USER_UPDATED")) {
-        addLog("Usuário detectado. Redirecionando...");
-        toast.success("Logado com sucesso!");
-        const dest = (redirect as any) || "/admin";
+      if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
+        if (redirecting) return;
+        
+        if (window.location.pathname !== "/login") {
+          return;
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const dest = params.get("redirect") || "/admin";
+        
+        redirecting = true;
         
         setTimeout(() => {
-          window.location.href = dest;
-        }, 500);
+          window.location.replace(dest);
+        }, 100);
       }
     });
+
     return () => subscription.unsubscribe();
-  }, [navigate, redirect]);
+  }, []);
 
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) {
@@ -85,28 +90,25 @@ function LoginPage() {
     }
 
     setLoading(true);
-    addLog(`Tentando login: ${email}`);
-
+    
     try {
-      console.log("Supabase signIn attempt...");
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password.trim(),
       });
 
-      console.log("Supabase response:", { hasSession: !!data?.session, error: error?.message });
-
       if (error) {
-        addLog(`Erro: ${error.message} (${error.status})`);
         toast.error(error.message);
       } else if (data.session) {
-        addLog("Login bem-sucedido!");
-        const dest = (redirect as any) || "/admin";
-        window.location.href = dest;
+        // Força o redirecionamento imediato após sucesso, 
+        // caso o listener do useEffect falhe ou demore.
+        const params = new URLSearchParams(window.location.search);
+        const dest = params.get("redirect") || "/admin";
+        window.location.replace(dest);
       }
     } catch (err: any) {
-      addLog(`Exceção: ${err.message}`);
-      console.error("LOGIN_EXCEPTION", err);
+      console.error("Login exception", err);
+      toast.error("Ocorreu um erro inesperado durante o login.");
     } finally {
       setLoading(false);
     }
@@ -127,18 +129,11 @@ function LoginPage() {
 
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4 pt-4">
-            <div className="p-2 bg-black/50 rounded text-[10px] font-mono max-h-32 overflow-y-auto border border-zinc-800">
-              <div className="flex justify-between border-b border-zinc-800 mb-1">
-                <span>DATABASE:</span>
-                <span className={dbStatus === "online" ? "text-green-500" : "text-red-500"}>
-                  {dbStatus.toUpperCase()}
-                </span>
-              </div>
-              {authLogs.map((log, i) => (
-                <div key={i} className="text-zinc-500 truncate text-[9px]">
-                  {log}
-                </div>
-              ))}
+            <div className="p-2 bg-black/50 rounded text-[10px] font-mono border border-zinc-800 flex justify-between">
+              <span>Status do Banco:</span>
+              <span className={dbStatus === "online" ? "text-green-500" : "text-red-500"}>
+                {dbStatus.toUpperCase()}
+              </span>
             </div>
 
             <div className="space-y-2">
@@ -186,6 +181,15 @@ function LoginPage() {
             >
               {loading ? "Processando..." : "Entrar no Painel"}
             </Button>
+            <Link to="/" className="w-full">
+              <Button
+                variant="ghost"
+                className="w-full text-zinc-500 hover:text-white gap-2"
+              >
+                <Home size={16} />
+                Voltar para o Início
+              </Button>
+            </Link>
             <p className="text-[10px] text-zinc-500 text-center uppercase tracking-widest opacity-40">
               Royal Admin Interface v2.0
             </p>

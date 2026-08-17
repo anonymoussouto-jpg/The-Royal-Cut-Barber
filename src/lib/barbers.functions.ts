@@ -3,7 +3,7 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
 export const createBarberUser = createServerFn({ method: "POST" })
-  .inputValidator((data) =>
+  .validator((data: unknown) =>
     z
       .object({
         barberId: z.string(),

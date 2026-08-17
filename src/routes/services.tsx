@@ -12,16 +12,16 @@ import { StyleGallery } from "@/components/services/StyleGallery";
 
 export const Route = createFileRoute("/services")({
   head: () => ({
-    title: "Serviços | The Royal Cut",
+    title: "Serviços Premium | The Royal Cut",
     meta: [
       {
         name: "description",
-        content: "Confira nossa galeria de serviços premium: do corte clássico à barboterapia tradicional com excelência.",
+        content: "Descubra nossa seleção de serviços premium: do corte clássico à barboterapia tradicional, executados com honra e excelência.",
       },
       { property: "og:title", content: "Serviços Premium | The Royal Cut" },
       {
         property: "og:description",
-        content: "Onde a tradição encontra o cuidado. Escolha o serviço que melhor reflete sua honra.",
+        content: "Descubra nossa seleção de serviços premium: do corte clássico à barboterapia tradicional, executados com honra e excelência.",
       },
     ],
   }),

@@ -33,7 +33,13 @@ import { useBooking } from "@/hooks/use-booking";
 export const Route = createFileRoute("/perfil")({
   head: () => ({
     title: "Meu Perfil | The Royal Cut",
-    meta: [{ name: "robots", content: "noindex" }],
+    meta: [
+      {
+        name: "description",
+        content: "Gerencie seus dados, histórico de agendamentos e saldo de Barber Points na The Royal Cut.",
+      },
+      { name: "robots", content: "noindex" },
+    ],
   }),
   component: ProfilePage,
 });
