@@ -40,7 +40,13 @@ function AdminOrders() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ orderId, status }: { orderId: string; status: string }) => {
-      const { error } = await supabase.from("orders").update({ status }).eq("id", orderId);
+      const { error } = await supabase
+        .from("orders")
+        .update({ 
+          status,
+          paid_at: status === "confirmed" ? new Date().toISOString() : null
+        })
+        .eq("id", orderId);
 
       if (error) throw error;
     },

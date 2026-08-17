@@ -180,7 +180,7 @@ function ServicesManagement() {
 
       setIsDialogOpen(false);
       resetForm();
-      fetchServices();
+      await fetchServices();
     } catch (error) {
       console.error("Error saving service:", error);
       toast.error("Erro ao salvar serviço");
@@ -212,7 +212,7 @@ function ServicesManagement() {
       duration_minutes: service.duration_minutes,
       price: service.price,
       image_url: service.image_url || "",
-      is_active: true, // Defaulting to true as DB column might not exist
+      is_active: service.is_active ?? true,
     });
     setPreviewUrl(service.image_url);
     setIsDialogOpen(true);

@@ -117,7 +117,7 @@ function StaffManagement() {
       setIsDialogOpen(false);
       setEditingBarber(null);
       setFormData({ full_name: "", bio: "", specialties: "", email: "", password: "" });
-      fetchBarbers();
+      await fetchBarbers();
     } catch (error) {
       console.error("Error saving barber:", error);
       toast.error("Erro ao salvar barbeiro");

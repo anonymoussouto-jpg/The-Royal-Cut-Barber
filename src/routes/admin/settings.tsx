@@ -37,18 +37,23 @@ function AdminSettings() {
       if (error) throw error;
 
       const settingsMap = data.reduce((acc, curr) => {
-        let parsedValue = curr.value;
-        try {
-          if (typeof curr.value === "string") {
-            parsedValue = JSON.parse(curr.value);
+        let value = curr.value;
+        // If it's an object/array, we want to keep it as string for the inputs
+        if (value !== null && typeof value === 'object') {
+          value = JSON.stringify(value);
+        } else if (typeof value === 'string') {
+          // Attempt to strip extra quotes if it was double-JSON-stringified
+          try {
+            const parsed = JSON.parse(value);
+            if (typeof parsed === 'string') value = parsed;
+          } catch (e) {
+            // Keep original string
           }
-        } catch (e) {
-          parsedValue = curr.value;
         }
 
         return {
           ...acc,
-          [curr.key]: String(parsedValue),
+          [curr.key]: String(value ?? ""),
         };
       }, {});
 
@@ -68,18 +73,23 @@ function AdminSettings() {
 
   const saveSetting = async (key: string, value: string) => {
     try {
-      const jsonValue = JSON.stringify(value);
-
-      const { error } = await supabase.from("system_settings").upsert({
-        key,
-        value: jsonValue,
-        updated_at: new Date().toISOString(),
-      });
+      setLoading(true);
+      const { error } = await supabase.from("system_settings").upsert(
+        {
+          key,
+          value: value, 
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'key' }
+      );
       if (error) throw error;
       setSettings((prev) => ({ ...prev, [key]: value }));
+      toast.success(`Configuração ${key} salva`);
     } catch (error) {
       console.error("Error saving setting:", error);
       toast.error(`Erro ao salvar ${key}`);
+    } finally {
+      setLoading(false);
     }
   };
 

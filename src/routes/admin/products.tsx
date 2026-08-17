@@ -169,7 +169,7 @@ function ProductsManagement() {
 
       setIsDialogOpen(false);
       resetForm();
-      fetchProducts();
+      await fetchProducts();
     } catch (error) {
       console.error("Error saving product:", error);
       toast.error("Erro ao salvar produto");
@@ -217,9 +217,9 @@ function ProductsManagement() {
       description: product.description || "",
       price: product.price,
       stock_quantity: product.stock_quantity,
-      rating: 5.0, // Defaulting as it's not in DB
+      rating: product.rating ?? 5.0,
       image_url: product.image_url || "",
-      is_available: product.stock_quantity > 0,
+      is_available: product.is_available ?? true,
     });
     setPreviewUrl(product.image_url);
     setIsDialogOpen(true);
