@@ -46,18 +46,28 @@ function LoginPage() {
   const [registerLoading, setRegisterLoading] = useState(false);
   const [dbStatus, setDbStatus] = useState<"checking" | "online" | "offline">("checking");
   const [dbError, setDbError] = useState<string | null>(null);
+  const [authLogs, setAuthLogs] = useState<string[]>([]);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+
+  const addLog = (msg: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setAuthLogs(prev => [`[${timestamp}] ${msg}`, ...prev].slice(0, 20));
+  };
 
   // Health check for database
   useEffect(() => {
     const checkHealth = async () => {
       try {
+        addLog("Iniciando check de saúde do banco...");
         const { error } = await supabase.from("services").select("id").limit(1);
         if (error) throw error;
         setDbStatus("online");
+        addLog("Banco de dados online e acessível.");
       } catch (err: any) {
         console.error("DB_HEALTH_CHECK_FAILED:", err);
         setDbStatus("offline");
         setDbError(err.message || "Falha na resposta do servidor de dados");
+        addLog(`ERRO BANCO: ${err.message}`);
       }
     };
     checkHealth();
@@ -67,7 +77,9 @@ function LoginPage() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("AUTH_EVENT:", event, session?.user?.id);
+      addLog(`Evento Auth: ${event}`);
       if (event === "SIGNED_IN" && session) {
+        addLog(`Sessão ativa para: ${session.user.email}`);
         toast.success("Autenticado!");
         setTimeout(() => {
           navigate({ to: (redirect as any) || "/admin" });
@@ -89,6 +101,7 @@ function LoginPage() {
     }
 
     setLoading(true);
+    addLog(`Tentativa de login: ${email}`);
     console.log("LOGGING_IN:", email);
 
     try {
@@ -98,6 +111,7 @@ function LoginPage() {
       });
 
       if (error) {
+        addLog(`Falha na autenticação: ${error.message} (Status: ${error.status})`);
         console.error("AUTH_ERROR:", error);
         
         // Enhanced logging for diagnostics
@@ -123,8 +137,10 @@ function LoginPage() {
         return;
       }
 
+      addLog("Login bem-sucedido via Supabase Auth.");
       console.log("AUTH_SUCCESS:", data.user?.id);
     } catch (error: any) {
+      addLog(`Erro crítico: ${error.message}`);
       console.error("CRITICAL_AUTH_ERROR:", error);
       toast.error("Erro técnico ao acessar o servidor");
     } finally {
@@ -371,7 +387,48 @@ function LoginPage() {
                 '''Do not make any visual modifications. The phrases I write are commands to understand what I want, not to be written down. Understand their content well, then execute what is required.'''
                                         
                                             
-                                            Implemente uma checagem de health do banco de dados antes do login e mostre na tela um diagnóstico claro se a conexão falhar.
+                                            Adicione um painel de diagnóstico para autenticação no próprio app, com logs relevantes, status de permissão e sugestões de correção quando houver falha de conexão.
+              </div>
+              
+              <div className="px-6 mb-4">
+                <button 
+                  type="button"
+                  onClick={() => setShowDiagnostics(!showDiagnostics)}
+                  className="w-full py-1 text-[10px] text-zinc-500 hover:text-primary border border-zinc-800 rounded uppercase tracking-widest transition-colors"
+                >
+                  {showDiagnostics ? "Esconder Diagnóstico" : "Ver Diagnóstico do Sistema"}
+                </button>
+                
+                {showDiagnostics && (
+                  <div className="mt-2 p-3 bg-black/50 border border-zinc-800 rounded-lg font-mono text-[10px] space-y-2 max-h-48 overflow-y-auto">
+                    <div className="flex items-center justify-between border-b border-zinc-800 pb-1">
+                      <span className="text-zinc-500 uppercase">Status do Banco</span>
+                      <span className={dbStatus === 'online' ? 'text-green-500' : 'text-red-500'}>
+                        {dbStatus.toUpperCase()}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <span className="text-zinc-500 uppercase block">Logs de Acesso</span>
+                      {authLogs.length === 0 ? (
+                        <div className="text-zinc-700 italic">Aguardando interação...</div>
+                      ) : (
+                        authLogs.map((log, i) => (
+                          <div key={i} className={log.includes("ERRO") || log.includes("Falha") ? "text-red-400" : "text-zinc-400"}>
+                            {log}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    
+                    {dbStatus === "offline" && (
+                      <div className="pt-2 border-t border-zinc-800 text-amber-500/80">
+                        <span className="uppercase block text-[9px] mb-1 italic underline">Sugestão de Correção:</span>
+                        Verifique as políticas de RLS e permissões GRANT na tabela 'services' e 'user_roles'.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
