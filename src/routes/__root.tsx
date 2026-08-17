@@ -5,6 +5,7 @@ import { type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { BookingModal } from "@/components/booking/BookingModal";
 import { ShoppingCart } from "@/components/shop/ShoppingCart";
+import { AIChatbot } from "@/components/ai/AIChatbot";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -47,6 +48,7 @@ function RootComponent() {
       <Outlet />
       <BookingModal />
       <ShoppingCart />
+      <AIChatbot />
       <Toaster position="top-center" richColors />
     </QueryClientProvider>
   );

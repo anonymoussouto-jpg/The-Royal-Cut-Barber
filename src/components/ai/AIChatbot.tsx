@@ -91,13 +91,25 @@ REGRAS:
       const extractKey = (val: any) => {
         if (!val) return undefined;
         try {
-          const parsed = typeof val === 'string' ? JSON.parse(val) : val;
-          return typeof parsed === 'string' ? parsed : JSON.stringify(parsed).replace(/^"|"$/g, '');
-        } catch { return String(val).replace(/^"|"$/g, ''); }
+          // If it's a JSON string, try to parse it
+          const parsed = typeof val === 'string' && (val.startsWith('{') || val.startsWith('[')) ? JSON.parse(val) : val;
+          // If the result is still a string (common in Supabase JSONB), clean it up
+          const cleanStr = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
+          return cleanStr.replace(/^"|"$/g, '').trim();
+        } catch { 
+          return String(val).replace(/^"|"$/g, '').trim(); 
+        }
       };
 
       const geminiKey = extractKey(settings?.find(s => s.key === 'gemini_api_key_1' || s.key === 'gemini_key_1')?.value);
       const groqKey = extractKey(settings?.find(s => s.key === 'groq_api_key_1' || s.key === 'groq_key_1')?.value);
+      
+      console.log("Chatbot: API Keys check", { 
+        hasGemini: !!geminiKey, 
+        hasGroq: !!groqKey,
+        geminiPrefix: geminiKey ? geminiKey.substring(0, 5) + '...' : 'none',
+        groqPrefix: groqKey ? groqKey.substring(0, 5) + '...' : 'none'
+      });
 
       // 3. Prepare and sanitize history for Gemini
       // Gemini requires first message to be from 'user'
@@ -123,6 +135,12 @@ REGRAS:
               parts: [{ text: msg.content }]
             }));
 
+            console.log("Chatbot: Enviando para Gemini...", { 
+              model: "gemini-1.5-flash", 
+              keyUsed: geminiKey.substring(0, 8) + "...",
+              endpoint: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey.substring(0, 5)}...`
+            });
+
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -134,7 +152,18 @@ REGRAS:
 
             if (response.ok) {
               const data = await response.json();
-              return data.candidates?.[0]?.content?.parts?.[0]?.text;
+              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                console.log("Chatbot: Gemini success");
+                return text;
+              }
+            } else {
+              const errorBody = await response.json().catch(() => null);
+              console.error("Chatbot: Erro Gemini", { 
+                status: response.status, 
+                statusText: response.statusText,
+                error: errorBody 
+              });
             }
           } catch (e) {
             console.error("Gemini failed, trying Groq...", e);
@@ -143,28 +172,49 @@ REGRAS:
 
         // 5. Try Groq fallback
         if (groqKey) {
-          const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${groqKey}`
-            },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              messages: [
-                { role: 'system', content: systemPrompt },
-                ...history.map(m => ({ role: m.role, content: m.content }))
-              ]
-            })
-          });
+          try {
+            console.log("Chatbot: Enviando para Groq...", { 
+              model: "llama-3.3-70b-versatile", 
+              keyUsed: groqKey.substring(0, 8) + "...",
+              endpoint: "https://api.groq.com/openai/v1/chat/completions"
+            });
 
-          if (response.ok) {
-            const data = await response.json();
-            return data.choices?.[0]?.message?.content;
+            const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${groqKey}`
+              },
+              body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  ...history.map(m => ({ role: m.role, content: m.content }))
+                ]
+              })
+            });
+
+            if (groqResponse.ok) {
+              const data = await groqResponse.json();
+              const text = data.choices?.[0]?.message?.content;
+              if (text) {
+                console.log("Chatbot: Groq success");
+                return text;
+              }
+            } else {
+              const errorBody = await groqResponse.json().catch(() => null);
+              console.error("Chatbot: Erro Groq", { 
+                status: groqResponse.status, 
+                statusText: groqResponse.statusText,
+                error: errorBody 
+              });
+            }
+          } catch (e) {
+            console.error("Chatbot: Groq call failed:", e);
           }
         }
 
-        throw new Error("Não foi possível obter resposta das IAs.");
+        throw new Error("Ambos Gemini e Groq falharam ou estão sem chaves.");
       };
 
       const aiContent = await Promise.race([
