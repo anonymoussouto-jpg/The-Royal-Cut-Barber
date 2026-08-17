@@ -78,7 +78,7 @@ function LoginPage() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("AUTH_EVENT:", event, session?.user?.id);
       addLog(`Evento Auth: ${event}`);
-      if (event === "SIGNED_IN" && session) {
+      if ((event === "SIGNED_IN" || event === "USER_UPDATED") && session) {
         addLog(`Sessão ativa para: ${session.user.email}`);
         toast.success("Autenticado!");
         setTimeout(() => {

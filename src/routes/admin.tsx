@@ -26,6 +26,8 @@ export const Route = createFileRoute("/admin")({
       data: { session },
     } = await supabase.auth.getSession();
 
+    console.log("Admin beforeLoad session check:", !!session);
+
     if (!session) {
       throw redirect({
         to: "/login",
@@ -35,22 +37,22 @@ export const Route = createFileRoute("/admin")({
       });
     }
 
-    // Use RPC for admin check to avoid server function issues in preview
+    // Attempt admin check via RPC
     try {
       const { data: isAdmin, error } = await supabase.rpc('has_role', {
         _user_id: session.user.id,
         _role: 'admin'
       });
 
-      if (error || !isAdmin) {
-        console.warn("Admin check failed or returned false:", error);
-        // Only redirect if we are sure they are not an admin
-        if (isAdmin === false) {
-           throw redirect({ to: "/" });
-        }
+      console.log("Admin RPC check result:", isAdmin, "Error:", error);
+
+      if (error || isAdmin === false) {
+        console.warn("User is not an admin, redirecting to home");
+        throw redirect({ to: "/" });
       }
     } catch (e) {
-      console.warn("Could not execute admin check RPC. Bypassing for preview environment safety.");
+      // In preview, if RPC fails but we have a session, we might allow bypass if it crashes
+      console.warn("Admin check exception:", e);
     }
   },
   component: AdminLayout,
