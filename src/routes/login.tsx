@@ -389,12 +389,6 @@ function LoginPage() {
             </CardHeader>
 
             <form onSubmit={handleLogin} className="space-y-4">
-              <div className="px-6 text-center text-[10px] text-zinc-600 opacity-20 hover:opacity-100 transition-opacity">
-                '''Do not make any visual modifications. The phrases I write are commands to understand what I want, not to be written down. Understand their content well, then execute what is required.'''
-                                        
-                                            
-                                            Adicione um painel de diagnóstico para autenticação no próprio app, com logs relevantes, status de permissão e sugestões de correção quando houver falha de conexão.
-              </div>
               
               <div className="px-6 mb-4">
                 <button 
