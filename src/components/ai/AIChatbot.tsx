@@ -119,6 +119,9 @@ REGRAS:
       if (aiMaxChars) finalSystemPrompt += `\n- REGRA: Não ultrapasse ${aiMaxChars} caracteres.`;
       if (aiMaxMessages) finalSystemPrompt += `\n- REGRA: Limite a no máximo ${aiMaxMessages} blocos.`;
 
+      const geminiKey = extractKey(settings?.find(s => s.key === 'gemini_api_key_1' || s.key === 'gemini_key_1')?.value);
+      const groqKey = extractKey(settings?.find(s => s.key === 'groq_api_key_1' || s.key === 'groq_key_1')?.value);
+
       console.log("Chatbot: API Keys check", { 
         hasGemini: !!geminiKey, 
         hasGroq: !!groqKey,
