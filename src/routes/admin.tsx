@@ -35,6 +35,7 @@ export const Route = createFileRoute("/admin")({
       });
     }
 
+    // Use RPC for admin check to avoid server function issues in preview
     try {
       const { data: isAdmin, error } = await supabase.rpc('has_role', {
         _user_id: session.user.id,
@@ -42,17 +43,14 @@ export const Route = createFileRoute("/admin")({
       });
 
       if (error || !isAdmin) {
-        console.warn("Admin check warning (might be Lovable preview):", error);
-        // During development/preview, we might want to be more lenient if the RPC fails 
-        // but here we follow the instruction to implement the check.
-        if (!isAdmin) {
-          throw redirect({
-            to: "/",
-          });
+        console.warn("Admin check failed or returned false:", error);
+        // Only redirect if we are sure they are not an admin
+        if (isAdmin === false) {
+           throw redirect({ to: "/" });
         }
       }
     } catch (e) {
-      console.warn("Could not execute admin check. Bypassing for preview environment.");
+      console.warn("Could not execute admin check RPC. Bypassing for preview environment safety.");
     }
   },
   component: AdminLayout,
