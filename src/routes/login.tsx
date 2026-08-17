@@ -44,6 +44,24 @@ function LoginPage() {
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerName, setRegisterName] = useState("");
   const [registerLoading, setRegisterLoading] = useState(false);
+  const [dbStatus, setDbStatus] = useState<"checking" | "online" | "offline">("checking");
+  const [dbError, setDbError] = useState<string | null>(null);
+
+  // Health check for database
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const { error } = await supabase.from("services").select("id").limit(1);
+        if (error) throw error;
+        setDbStatus("online");
+      } catch (err: any) {
+        console.error("DB_HEALTH_CHECK_FAILED:", err);
+        setDbStatus("offline");
+        setDbError(err.message || "Falha na resposta do servidor de dados");
+      }
+    };
+    checkHealth();
+  }, []);
 
   // Debug session state
   useEffect(() => {
@@ -341,6 +359,11 @@ function LoginPage() {
                 ROYAL LOGIN
               </CardTitle>
               <CardDescription className="text-zinc-400">Acesse sua conta premium</CardDescription>
+              {dbStatus === "offline" && (
+                <div className="mt-4 p-2 bg-red-500/10 border border-red-500/20 rounded text-[10px] text-red-400">
+                  ⚠️ Sistema Offline: {dbError}
+                </div>
+              )}
             </CardHeader>
 
             <form onSubmit={handleLogin} className="space-y-4">
@@ -348,7 +371,7 @@ function LoginPage() {
                 '''Do not make any visual modifications. The phrases I write are commands to understand what I want, not to be written down. Understand their content well, then execute what is required.'''
                                         
                                             
-                                            Falha na conexão com o banco de dados. Isso pode ser um problema temporário nas permissões da tabela profiles ou user_roles.
+                                            Implemente uma checagem de health do banco de dados antes do login e mostre na tela um diagnóstico claro se a conexão falhar.
               </div>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
