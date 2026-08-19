@@ -87,24 +87,39 @@ function AdminDashboard() {
       const monthEnd = endOfDay(
         new Date(parseInt(selectedYear), parseInt(selectedMonth) + 1, 0),
       ).toISOString();
+      
+      // Dados do mês anterior
+      const prevMonthStart = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, 1).toISOString();
+      const prevMonthEnd = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0, 23, 59, 59).toISOString();
+
       const todayStart = startOfDay(new Date()).toISOString();
       const todayEnd = endOfDay(new Date()).toISOString();
 
       // Fetch monthly appointments with details for advanced reports
-      const { data: monthAppsDetailed } = await supabase
-        .from("appointments")
-        .select(
-          `
-          total_price, 
-          status, 
-          barber_id, 
-          start_time,
-          services(name),
-          barbers(full_name, avatar_url)
-        `,
-        )
-        .gte("start_time", monthStart)
-        .lte("start_time", monthEnd);
+      const [monthlyRes, prevMonthlyRes] = await Promise.all([
+        supabase
+          .from("appointments")
+          .select(
+            `
+            total_price, 
+            status, 
+            barber_id, 
+            start_time,
+            services(name),
+            barbers(full_name, avatar_url)
+          `,
+          )
+          .gte("start_time", monthStart)
+          .lte("start_time", monthEnd),
+        supabase
+          .from("appointments")
+          .select("total_price, status")
+          .gte("start_time", prevMonthStart)
+          .lte("start_time", prevMonthEnd)
+      ]);
+
+      const monthAppsDetailed = monthlyRes.data;
+      const prevAppointments = prevMonthlyRes.data;
 
       const monthRevenue =
         monthAppsDetailed
@@ -188,6 +203,18 @@ function AdminDashboard() {
 
       setChartData(chartDataGenerated);
 
+      const currentRevenue = monthAppsDetailed
+        ?.filter(a => a.status === 'completed' || a.status === 'confirmed')
+        .reduce((sum, a) => sum + (Number(a.total_price) || 0), 0) || 0;
+
+      const prevRevenue = prevAppointments
+        ?.filter(a => a.status === 'completed' || a.status === 'confirmed')
+        .reduce((sum, a) => sum + (Number(a.total_price) || 0), 0) || 0;
+
+      const revenueTrend = prevRevenue === 0
+        ? (currentRevenue > 0 ? "+100%" : "0%")
+        : `${currentRevenue >= prevRevenue ? "+" : ""}${Math.round(((currentRevenue - prevRevenue) / prevRevenue) * 100)}%`;
+
       setStats([
         {
           label: "Faturamento (Hoje)",
@@ -215,7 +242,7 @@ function AdminDashboard() {
           label: "Faturamento (Mês)",
           value: `R$ ${monthRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
           icon: TrendingUp,
-          trend: "+0%",
+          trend: revenueTrend,
           key: "monthly",
         },
       ]);
@@ -287,15 +314,15 @@ function AdminDashboard() {
                     variant="outline"
                     className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[10px] px-1.5 py-0"
                   >
-                    {stat.secondaryValue} pendentes
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-green-500 mt-1 font-medium">
-                {stat.trend} em relação ao período anterior
-              </p>
-            </CardContent>
-          </Card>
+                {stat.secondaryValue} pendentes
+              </Badge>
+            )}
+          </div>
+          <p className={`text-xs mt-1 font-medium ${stat.key === 'monthly' ? (stat.trend.startsWith('+') ? 'text-green-500' : 'text-red-500') : 'text-green-500'}`}>
+            {stat.trend} em relação ao período anterior
+          </p>
+        </CardContent>
+      </Card>
         ))}
       </div>
 

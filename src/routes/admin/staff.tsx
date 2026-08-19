@@ -44,6 +44,7 @@ interface Barber {
   auth_user_id?: string | null;
   email?: string | null;
   transformations_count?: number;
+  schedule?: any;
 }
 
 function StaffManagement() {
@@ -62,6 +63,15 @@ function StaffManagement() {
     specialties: "",
     email: "",
     password: "",
+  });
+  const [scheduleForm, setScheduleForm] = useState({
+    seg: { active: true, start: "09:00", end: "19:00" },
+    ter: { active: true, start: "09:00", end: "19:00" },
+    qua: { active: true, start: "09:00", end: "19:00" },
+    qui: { active: true, start: "09:00", end: "19:00" },
+    sex: { active: true, start: "09:00", end: "19:00" },
+    sab: { active: true, start: "09:00", end: "17:00" },
+    dom: { active: false, start: "09:00", end: "17:00" },
   });
 
   const createAccessFn = useServerFn(createBarberUser);
@@ -103,6 +113,7 @@ function StaffManagement() {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
+        schedule: scheduleForm,
       };
 
       if (editingBarber) {
@@ -172,6 +183,17 @@ function StaffManagement() {
       email: barber.email || "",
       password: "",
     });
+    if (barber.schedule) setScheduleForm(barber.schedule as any);
+    else
+      setScheduleForm({
+        seg: { active: true, start: "09:00", end: "19:00" },
+        ter: { active: true, start: "09:00", end: "19:00" },
+        qua: { active: true, start: "09:00", end: "19:00" },
+        qui: { active: true, start: "09:00", end: "19:00" },
+        sex: { active: true, start: "09:00", end: "19:00" },
+        sab: { active: true, start: "09:00", end: "17:00" },
+        dom: { active: false, start: "09:00", end: "17:00" },
+      });
     setIsDialogOpen(true);
   };
 
@@ -252,6 +274,54 @@ function StaffManagement() {
                   onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                   className="bg-background border-border"
                 />
+              </div>
+
+              <div className="space-y-3 pt-4 border-t border-border">
+                <Label className="text-sm font-bold flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-primary" /> 📅 Horário de Trabalho
+                </Label>
+                <div className="space-y-2">
+                  {(Object.entries(scheduleForm) as [string, { active: boolean; start: string; end: string }][]).map(
+                    ([day, cfg]) => (
+                      <div key={day} className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={cfg.active}
+                          onChange={(e) =>
+                            setScheduleForm((prev) => ({ ...prev, [day]: { ...cfg, active: e.target.checked } }))
+                          }
+                          className="w-4 h-4 accent-primary"
+                        />
+                        <span className="w-8 text-xs font-bold uppercase text-muted-foreground">{day}</span>
+                        {cfg.active ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="time"
+                              value={cfg.start}
+                              onChange={(e) =>
+                                setScheduleForm((prev) => ({ ...prev, [day]: { ...cfg, start: e.target.value } }))
+                              }
+                              className="border border-border rounded-lg px-2 py-1 text-xs bg-background w-24 text-white"
+                            />
+                            <span className="text-muted-foreground text-[10px] uppercase font-bold">até</span>
+                            <input
+                              type="time"
+                              value={cfg.end}
+                              onChange={(e) =>
+                                setScheduleForm((prev) => ({ ...prev, [day]: { ...cfg, end: e.target.value } }))
+                              }
+                              className="border border-border rounded-lg px-2 py-1 text-xs bg-background w-24 text-white"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground italic uppercase font-bold tracking-widest">
+                            Folga
+                          </span>
+                        )}
+                      </div>
+                    ),
+                  )}
+                </div>
               </div>
 
               {editingBarber && (
