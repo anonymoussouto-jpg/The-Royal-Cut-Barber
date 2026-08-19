@@ -44,6 +44,7 @@ function GroomingStore() {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>("Todos");
   const { addItem, items, openCart } = useShopStore();
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -177,7 +178,10 @@ function GroomingStore() {
                 transition={{ duration: 0.3, delay: i * 0.05 }}
               >
                 <Card className="border-border/40 overflow-hidden bg-card/50 hover:border-primary/50 transition-all duration-500 group flex flex-col h-full">
-                  <div className="aspect-square overflow-hidden relative bg-zinc-900">
+                  <div 
+                    className="aspect-square overflow-hidden relative bg-zinc-900 cursor-pointer"
+                    onClick={() => setSelectedProduct(product)}
+                  >
                     {product.image_url ? (
                       <img
                         src={product.image_url}
@@ -210,7 +214,10 @@ function GroomingStore() {
                         </span>
                       )}
                     </div>
-                    <CardTitle className="text-lg group-hover:text-primary transition-colors line-clamp-1">
+                    <CardTitle 
+                      className="text-lg group-hover:text-primary transition-colors line-clamp-1 cursor-pointer"
+                      onClick={() => setSelectedProduct(product)}
+                    >
                       {product.name}
                     </CardTitle>
                     <p className="text-muted-foreground text-xs mt-2 line-clamp-2 h-8">
@@ -239,6 +246,81 @@ function GroomingStore() {
           </AnimatePresence>
         </div>
       </div>
+      
+      {/* Product Detail Modal */}
+      <AnimatePresence>
+        {selectedProduct && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+            onClick={() => setSelectedProduct(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-card rounded-2xl p-6 max-w-md w-full space-y-4 border border-border shadow-2xl relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="relative">
+                <img
+                  src={
+                    selectedProduct.image_url ||
+                    "https://images.unsplash.com/photo-1626285861696-9f0bf5a49c6d?auto=format&fit=crop&q=80&w=800"
+                  }
+                  alt={selectedProduct.name}
+                  className="w-full h-52 object-cover rounded-xl"
+                />
+                <button
+                  onClick={() => setSelectedProduct(null)}
+                  className="absolute top-2 right-2 bg-black/50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-black/80 transition-colors border border-white/10"
+                >
+                  ✕
+                </button>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold font-serif">{selectedProduct.name}</h2>
+                {selectedProduct.category && (
+                  <span className="text-[10px] text-primary uppercase tracking-widest font-bold">
+                    {selectedProduct.category}
+                  </span>
+                )}
+              </div>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {selectedProduct.description || "Produto premium da The Royal Cut."}
+              </p>
+              <div className="flex items-center justify-between pt-2">
+                <div>
+                  <span className="text-2xl font-bold text-primary block">
+                    R$ {Number(selectedProduct.price).toFixed(2)}
+                  </span>
+                  {selectedProduct.stock_quantity > 0 ? (
+                    <span className="text-[10px] text-green-400 font-bold uppercase tracking-widest">
+                      ✓ Em estoque
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-red-400 font-bold uppercase tracking-widest">
+                      Esgotado
+                    </span>
+                  )}
+                </div>
+                <Button
+                  onClick={() => {
+                    handleAddToCart(selectedProduct);
+                    setSelectedProduct(null);
+                  }}
+                  disabled={selectedProduct.stock_quantity === 0}
+                  className="bg-primary text-primary-foreground font-bold rounded-full px-6"
+                >
+                  Adicionar ao Carrinho
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PublicLayout>
   );
 }
