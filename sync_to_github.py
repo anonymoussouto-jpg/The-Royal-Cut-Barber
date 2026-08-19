@@ -3,6 +3,7 @@ import json
 import base64
 import requests
 import time
+import sys
 
 # Usando o gateway do Lovable
 LOVABLE_API_KEY = os.environ.get("LOVABLE_API_KEY")
@@ -27,7 +28,8 @@ def get_all_files(directory):
 
 def sync():
     if not LOVABLE_API_KEY or not GITHUB_API_KEY:
-        print("Credenciais do GitHub não encontradas. Certifique-se de que a conexão GitHub está ativa.")
+        sys.stderr.write("Credenciais do GitHub não encontradas. Certifique-se de que a conexão GitHub está ativa.\n")
+        sys.stderr.flush()
         return
 
     headers = {
@@ -37,23 +39,30 @@ def sync():
     }
 
     # 1. Obter SHA do commit principal
-    print(f"Buscando estado da branch main em {REPO_NAME}...")
+    sys.stdout.write(f"Buscando estado da branch main em {REPO_NAME}...\n")
+    sys.stdout.flush()
     resp = requests.get(f"{GATEWAY_URL}/repos/{REPO_NAME}/branches/main", headers=headers)
     if resp.status_code != 200:
-        print(f"Erro ao obter branch: {resp.status_code} - {resp.text}")
+        sys.stderr.write(f"Erro ao obter branch: {resp.status_code} - {resp.text}\n")
+        sys.stderr.flush()
         return
     
     branch_data = resp.json()
     parent_commit_sha = branch_data["commit"]["sha"]
 
-    print(f"Buscando arquivos locais...")
+    sys.stdout.write(f"Buscando arquivos locais...\n")
+    sys.stdout.flush()
     files = get_all_files(".")
-    print(f"Total: {len(files)} arquivos.")
+    sys.stdout.write(f"Total: {len(files)} arquivos.\n")
+    sys.stdout.flush()
 
     # 2. Criar Blobs
     tree_items = []
-    for file_path in files:
+    for i, file_path in enumerate(files):
         if os.path.isdir(file_path): continue
+        if i % 10 == 0:
+            sys.stdout.write(f"Processando arquivo {i}/{len(files)}: {file_path}\n")
+            sys.stdout.flush()
         try:
             with open(file_path, "rb") as f:
                 content = f.read()
@@ -75,12 +84,15 @@ def sync():
                     "sha": sha
                 })
             else:
-                print(f"Erro no blob {file_path}: {blob_resp.text}")
+                sys.stderr.write(f"Erro no blob {file_path}: {blob_resp.text}\n")
+                sys.stderr.flush()
         except Exception as e:
-            print(f"Falha ao ler {file_path}: {e}")
+            sys.stderr.write(f"Falha ao ler {file_path}: {e}\n")
+            sys.stderr.flush()
 
     # 3. Criar Árvore
-    print("Criando nova árvore no GitHub...")
+    sys.stdout.write("Criando nova árvore no GitHub...\n")
+    sys.stdout.flush()
     tree_resp = requests.post(
         f"{GATEWAY_URL}/repos/{REPO_NAME}/git/trees",
         headers=headers,
@@ -88,31 +100,35 @@ def sync():
     )
     
     if tree_resp.status_code != 201:
-        print(f"Erro ao criar árvore: {tree_resp.status_code} - {tree_resp.text}")
+        sys.stderr.write(f"Erro ao criar árvore: {tree_resp.status_code} - {tree_resp.text}\n")
+        sys.stderr.flush()
         return
         
     new_tree_sha = tree_resp.json()["sha"]
 
     # 4. Criar Commit
-    print("Criando commit...")
+    sys.stdout.write("Criando commit...\n")
+    sys.stdout.flush()
     commit_resp = requests.post(
         f"{GATEWAY_URL}/repos/{REPO_NAME}/git/commits",
         headers=headers,
         json={
-            "message": "Update: favicon, SEO, and latest UI refinements",
+            "message": "Update: dynamic homepage settings, Asaas payment fixes, and UI refinements",
             "tree": new_tree_sha,
             "parents": [parent_commit_sha]
         }
     )
     
     if commit_resp.status_code != 201:
-        print(f"Erro no commit: {commit_resp.text}")
+        sys.stderr.write(f"Erro no commit: {commit_resp.text}\n")
+        sys.stderr.flush()
         return
         
     new_commit_sha = commit_resp.json()["sha"]
 
     # 5. Atualizar Referência
-    print("Atualizando branch main...")
+    sys.stdout.write("Atualizando branch main...\n")
+    sys.stdout.flush()
     ref_resp = requests.patch(
         f"{GATEWAY_URL}/repos/{REPO_NAME}/git/refs/heads/main",
         headers=headers,
@@ -120,9 +136,11 @@ def sync():
     )
     
     if ref_resp.status_code == 200:
-        print("GitHub sincronizado com sucesso via Gateway!")
+        sys.stdout.write("GitHub sincronizado com sucesso via Gateway!\n")
+        sys.stdout.flush()
     else:
-        print(f"Erro ao atualizar ref: {ref_resp.text}")
+        sys.stderr.write(f"Erro ao atualizar ref: {ref_resp.text}\n")
+        sys.stderr.flush()
 
 if __name__ == "__main__":
     sync()

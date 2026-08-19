@@ -104,6 +104,10 @@ function AdminCalendar() {
     };
   }, []);
 
+  useEffect(() => {
+    fetchAppointments();
+  }, [filterBarber]);
+
   const fetchBarbersAndServices = async () => {
     const [barbersRes, servicesRes] = await Promise.all([
       supabase.from("barbers").select("*"),
@@ -115,7 +119,7 @@ function AdminCalendar() {
 
   const fetchAppointments = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("appointments")
         .select(
           `
@@ -124,8 +128,13 @@ function AdminCalendar() {
           barbers(full_name),
           services(name, price, owner_percentage, barber_percentage)
         `,
-        )
-        .order("start_time", { ascending: true });
+        );
+
+      if (filterBarber !== "all") {
+        query = query.eq("barber_id", filterBarber);
+      }
+
+      const { data, error } = await query.order("start_time", { ascending: true });
 
       if (error) throw error;
       setAppointments(data || []);
@@ -529,27 +538,63 @@ function AdminCalendar() {
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <Badge
-                          variant="outline"
-                          className={`text-[9px] font-black uppercase tracking-widest py-1 px-3 border-white/10 ${
-                            app.status === "confirmed"
-                              ? "text-blue-500 bg-blue-500/5"
+                      <div className="flex items-center gap-4">
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge
+                            variant="outline"
+                            className={`text-[9px] font-black uppercase tracking-widest py-1 px-3 border-white/10 ${
+                              app.status === "confirmed"
+                                ? "text-blue-400 bg-blue-500/5"
+                                : app.status === "completed"
+                                  ? "text-green-400 bg-green-500/5"
+                                  : app.status === "cancelled"
+                                    ? "text-red-400 bg-red-500/5"
+                                    : "text-yellow-400 bg-yellow-500/5"
+                            }`}
+                          >
+                            {app.status === "confirmed"
+                              ? "Confirmado"
                               : app.status === "completed"
-                                ? "text-green-500 bg-green-500/5"
+                                ? "Concluído"
                                 : app.status === "cancelled"
-                                  ? "text-red-500 bg-red-500/5"
-                                  : "text-yellow-500 bg-yellow-500/5"
-                          }`}
-                        >
-                          {app.status === "confirmed"
-                            ? "Confirmado"
-                            : app.status === "completed"
-                              ? "Concluído"
-                              : app.status === "cancelled"
-                                ? "Cancelado"
-                                : "Pendente"}
-                        </Badge>
+                                  ? "Cancelado"
+                                  : "Pendente"}
+                          </Badge>
+                          
+                          {!isCancelled && app.status !== "completed" && (
+                            <div className="flex gap-1">
+                              {app.status === "pending" && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 bg-green-500/10 hover:bg-green-500/20 text-green-500 rounded-lg"
+                                  onClick={() => handleUpdateStatus(app.id, "confirmed")}
+                                  title="Confirmar"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg"
+                                onClick={() => handleUpdateStatus(app.id, "completed")}
+                                title="Concluir"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg"
+                                onClick={() => handleUpdateStatus(app.id, "cancelled")}
+                                title="Cancelar"
+                              >
+                                <XCircle className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
 
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

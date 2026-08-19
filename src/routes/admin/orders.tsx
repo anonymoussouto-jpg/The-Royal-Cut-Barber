@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Loader2,
   Calendar as CalendarIcon,
+  User,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export const Route = createFileRoute("/admin/orders")({
   component: AdminOrders,
@@ -30,7 +32,10 @@ function AdminOrders() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("*")
+        .select(`
+          *,
+          client:profiles(full_name, avatar_url)
+        `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -107,9 +112,12 @@ function AdminOrders() {
               <CardContent className="p-0">
                 <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <ShoppingBag className="w-6 h-6 text-primary" />
-                    </div>
+                    <Avatar className="w-12 h-12 rounded-2xl bg-primary/10 border border-white/10">
+                      <AvatarImage src={(order.client as any)?.avatar_url || ""} />
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        <User className="w-6 h-6" />
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
                       <div className="flex items-center gap-3 mb-1">
                         <span className="text-sm font-mono text-primary font-bold">
@@ -117,7 +125,7 @@ function AdminOrders() {
                         </span>
                         {getStatusBadge(order.status)}
                       </div>
-                      <h3 className="font-bold text-lg">{order.client_name}</h3>
+                      <h3 className="font-bold text-lg">{(order.client as any)?.full_name || order.client_name || "Cliente Anônimo"}</h3>
                       <div className="flex items-center gap-4 text-xs text-white/40 mt-1">
                         <span className="flex items-center gap-1">
                           <CalendarIcon className="w-3 h-3" />

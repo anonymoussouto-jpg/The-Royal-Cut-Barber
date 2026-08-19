@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,8 @@ import {
   Loader2,
   Award,
   ChevronRight,
+  Lock,
+  Save,
 } from "lucide-react";
 import { useBooking } from "@/hooks/use-booking";
 
@@ -54,6 +57,10 @@ function ProfilePage() {
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -112,6 +119,27 @@ function ProfilePage() {
     }
   };
 
+  const handleUpdatePassword = async () => {
+    if (!newPassword || newPassword !== confirmPassword) {
+      toast.error("As senhas não coincidem ou estão vazias.");
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast.success("Senha alterada com sucesso!");
+      setShowPasswordForm(false);
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      toast.error("Erro ao alterar senha: " + error.message);
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
   const getPointsLevel = (points: number) => {
     if (points > 500) return { label: "Ouro", color: "text-yellow-500", progress: 100 };
     if (points > 200)
@@ -130,69 +158,104 @@ function ProfilePage() {
 
   return (
     <div className="container max-w-4xl py-20 px-6 space-y-8">
+      {/* Meus Dados Section */}
+      <Card className="bg-zinc-900/50 border-white/10 p-6 rounded-3xl overflow-hidden relative">
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center text-primary font-bold text-xl shrink-0">
+              {profile?.full_name?.charAt(0) || "U"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl font-serif font-bold truncate">Meus Dados</h2>
+              <p className="text-white/40 text-sm truncate">{profile?.email}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label>Nome Completo</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Seu nome completo"
+                  className="bg-white/5 border-white/10"
+                />
+                <Button 
+                  onClick={handleUpdateProfile} 
+                  disabled={isUpdating}
+                  className="bg-primary text-black hover:bg-primary/90 shrink-0"
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  Salvar
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Segurança</Label>
+              <Button
+                variant="outline"
+                className="w-full border-white/10 hover:bg-white/5 gap-2"
+                onClick={() => setShowPasswordForm(!showPasswordForm)}
+              >
+                <Lock className="w-4 h-4" />
+                {showPasswordForm ? "Cancelar Alteração" : "Alterar Minha Senha"}
+              </Button>
+            </div>
+          </div>
+
+          {showPasswordForm && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-2xl bg-white/5 border border-white/10"
+            >
+              <div className="space-y-2">
+                <Label>Nova Senha</Label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="******"
+                  className="bg-zinc-900 border-white/10"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Confirmar Senha</Label>
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="******"
+                  className="bg-zinc-900 border-white/10"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button 
+                  className="w-full bg-primary text-black hover:bg-primary/90"
+                  onClick={handleUpdatePassword}
+                  disabled={isUpdatingPassword}
+                >
+                  {isUpdatingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar Alteração"}
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </Card>
+
       <div className="flex flex-col md:flex-row justify-between items-start gap-6">
         <Card className="flex-1 bg-zinc-900/50 border-white/10 p-6 rounded-3xl w-full">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center text-primary font-bold text-xl">
-              {profile?.full_name?.charAt(0) || "U"}
+              <User className="w-8 h-8" />
             </div>
             <div>
-              <h2 className="text-2xl font-serif font-bold">{profile?.full_name}</h2>
-              <p className="text-white/50">{profile?.phone}</p>
+              <h2 className="text-2xl font-serif font-bold">Status Royal</h2>
+              <p className="text-white/50">{profile?.phone || "Telefone não informado"}</p>
             </div>
           </div>
-          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="absolute top-4 right-4 text-primary hover:bg-primary/10"
-              >
-                <Edit3 className="w-4 h-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-zinc-950 border-white/10 text-white">
-              <DialogHeader>
-                <DialogTitle>Editar Perfil</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome Completo</Label>
-                  <Input
-                    id="name"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="bg-white/5 border-white/10"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input
-                    id="phone"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    className="bg-white/5 border-white/10"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditDialogOpen(false)}
-                  className="border-white/10"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleUpdateProfile}
-                  disabled={isUpdating}
-                  className="bg-primary text-black hover:bg-primary/90"
-                >
-                  {isUpdating ? "Salvando..." : "Salvar Alterações"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </Card>
 
         <Card className="flex-1 bg-zinc-900/50 border-white/10 p-6 rounded-3xl w-full">

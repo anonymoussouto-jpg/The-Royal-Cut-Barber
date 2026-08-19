@@ -427,6 +427,17 @@ function AdminSettings() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-2">
+                  <Label>Nome da Barbearia</Label>
+                  <Input
+                    placeholder="Ex: The Royal Cut"
+                    value={settings["barber_shop_name"] || ""}
+                    onChange={(e) => saveSetting("barber_shop_name", e.target.value)}
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Nome exibido no site, recibos e mensagens automáticas.
+                  </p>
+                </div>
+                <div className="grid gap-2">
                   <Label>Chave Principal (CNPJ/Email)</Label>
                   <Input
                     placeholder="sua-chave@pix.com"

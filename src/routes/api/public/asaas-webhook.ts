@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export const Route = createFileRoute("/api/public/asaas-webhook")({
   server: {
@@ -8,7 +8,7 @@ export const Route = createFileRoute("/api/public/asaas-webhook")({
         try {
           const authHeader = request.headers.get("asaas-access-token");
 
-          const { data: secretSetting } = await supabase
+          const { data: secretSetting } = await supabaseAdmin
             .from("system_settings")
             .select("value")
             .eq("key", "asaas_webhook_secret")
@@ -49,7 +49,7 @@ export const Route = createFileRoute("/api/public/asaas-webhook")({
             }
 
             // Try updating orders first where asaas_payment_id matches
-            const { data: order } = await supabase
+            const { data: order } = await supabaseAdmin
               .from("orders")
               .update(updateData)
               .eq("asaas_payment_id", payment.id)
@@ -57,22 +57,29 @@ export const Route = createFileRoute("/api/public/asaas-webhook")({
               .maybeSingle();
 
             // Also try updating appointments where asaas_payment_id matches
-            await supabase
+            await supabaseAdmin
               .from("appointments")
               .update({
                 status: "confirmed",
                 payment_status: "paid",
               })
               .eq("asaas_payment_id", payment.id);
+
+            await supabaseAdmin
+              .from("subscriptions")
+              .update({ status: "active" } as any)
+              .eq("asaas_payment_id" as any, payment.id);
+
+            console.log(`Payment confirmed for ID: ${payment.id}`);
           } else if (event === "PAYMENT_REFUNDED") {
-            await supabase.from("orders").update({ status: "REFUNDED" }).eq("asaas_payment_id", payment.id);
-            await supabase
+            await supabaseAdmin.from("orders").update({ status: "REFUNDED" }).eq("asaas_payment_id", payment.id);
+            await supabaseAdmin
               .from("appointments")
               .update({ status: "cancelled", payment_status: "refunded" })
               .eq("asaas_payment_id", payment.id);
           } else if (event === "PAYMENT_OVERDUE") {
-            await supabase.from("orders").update({ status: "OVERDUE" }).eq("asaas_payment_id", payment.id);
-            await supabase
+            await supabaseAdmin.from("orders").update({ status: "OVERDUE" }).eq("asaas_payment_id", payment.id);
+            await supabaseAdmin
               .from("appointments")
               .update({ status: "pending", payment_status: "overdue" })
               .eq("asaas_payment_id", payment.id);

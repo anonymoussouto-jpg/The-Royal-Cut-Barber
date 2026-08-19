@@ -48,10 +48,10 @@ function ResetPasswordPage() {
 
       if (error) throw error;
 
-      toast.success("Senha atualizada com sucesso!");
+      toast.success("Senha redefinida com sucesso!");
       setTimeout(() => {
         navigate({ to: "/login" });
-      }, 2000);
+      }, 1000);
     } catch (error: any) {
       toast.error(error.message || "Erro ao atualizar senha");
     } finally {

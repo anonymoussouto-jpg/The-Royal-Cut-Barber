@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, TrendingUp, Users, Calendar, Wallet } from "lucide-react";
+import { Loader2, TrendingUp, Users, Calendar, Wallet, Download } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -121,41 +121,17 @@ function ReportsPage() {
       return;
     }
 
-    const monthName = format(new Date(), "MMMM", { locale: ptBR });
-    const year = format(new Date(), "yyyy");
-    
-    // Headers
-    const headers = ["Data", "Cliente", "Serviço", "Barbeiro", "Valor Total", "Valor Dono", "Valor Barbeiro", "Status Pagamento"];
-    
-    // Rows
-    const rows = data.rawAppointments.map((app: any) => {
-      const price = Number(app.total_price || 0);
-      const ownerP = app.services?.owner_percentage || 50;
-      const barberP = app.services?.barber_percentage || 50;
-      
-      return [
-        format(new Date(app.start_time), "dd/MM/yyyy HH:mm"),
-        app.client_name || "N/A",
-        app.services?.name || "N/A",
-        app.barbers?.full_name || "N/A",
-        price.toFixed(2),
-        ((price * ownerP) / 100).toFixed(2),
-        ((price * barberP) / 100).toFixed(2),
-        app.payment_status || "Pendente"
-      ];
-    });
+    const headers = "Cliente,Barbeiro,Serviço,Valor Total,Data";
+    const rows = data.rawAppointments.map((a: any) =>
+      `"${a.client_name || a.profiles?.full_name || 'N/A'}","${a.barbers?.full_name || 'N/A'}","${a.services?.name || 'N/A'}","R$ ${a.total_price}","${format(new Date(a.start_time), 'dd/MM/yyyy HH:mm', { locale: ptBR })}"`
+    ).join('\n');
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row: any[]) => row.map(val => `"${val}"`).join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const csvContent = headers + '\n' + rows;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `relatorio_royal_cut_${monthName}_${year}.csv`);
-    link.style.visibility = "hidden";
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `relatorio_${format(new Date(), 'MM-yyyy')}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -168,9 +144,10 @@ function ReportsPage() {
         <h1 className="text-3xl font-serif font-bold">Relatórios Avançados</h1>
         <Button 
           onClick={exportCSV}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold gap-2"
         >
-          Exportar Relatório
+          <Download className="w-4 h-4" />
+          Exportar CSV
         </Button>
       </div>
 

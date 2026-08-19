@@ -106,7 +106,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
             className="flex items-center gap-2 text-xl font-serif font-bold tracking-tighter text-primary"
           >
             <Scissors className="w-6 h-6" />
-            <span className="hidden sm:inline">THE ROYAL CUT</span>
+            <span className="hidden sm:inline uppercase">{settings?.["barber_shop_name"] || "THE ROYAL CUT"}</span>
           </Link>
 
           <div className="hidden lg:flex items-center gap-8">
@@ -271,7 +271,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col items-center md:items-start gap-4">
             <div className="flex items-center gap-2 text-xl font-serif font-bold text-primary">
               <Scissors className="w-6 h-6" />
-              <span>THE ROYAL CUT</span>
+              <span>{settings?.["barber_shop_name"]?.toUpperCase() || "THE ROYAL CUT"}</span>
             </div>
             <p className="text-gray-400 text-sm italic">
               "Tudo que fizer, faça de coração - Col 3:23"
@@ -304,7 +304,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
                 <MessageSquare className="w-5 h-5 text-gray-400" />
               </a>
               <a
-                href="https://whatsapp.com"
+                href={`https://wa.me/55${(settings?.["whatsapp_number"] || "11999999999").replace(/\D/g, "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 bg-white/5 rounded-full hover:bg-primary/20 transition-colors"

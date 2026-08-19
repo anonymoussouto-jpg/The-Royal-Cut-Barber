@@ -3,12 +3,14 @@ import PublicLayout from "@/components/layout/PublicLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check, Crown, Star, ShieldCheck, Loader2, QrCode, ClipboardCheck } from "lucide-react";
+import { Check, Crown, Star, ShieldCheck, Loader2, QrCode, ClipboardCheck, Copy } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { createSubscriptionPayment } from "@/lib/subscriptions.functions";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Dialog,
   DialogContent,
@@ -105,6 +107,8 @@ function MembershipPage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [clientInfo, setClientInfo] = useState({ name: "", phone: "" });
   const [pixKey, setPixKey] = useState("");
+  const [pixData, setPixData] = useState<{ encodedImage: string; payload: string } | null>(null);
+  const createSubFn = useServerFn(createSubscriptionPayment);
 
   const { data: session } = useQuery({
     queryKey: ["session"],
@@ -165,39 +169,31 @@ function MembershipPage() {
   const subscribeMutation = useMutation({
     mutationFn: async (plan: (typeof plans)[0]) => {
       if (!session?.user?.id) throw new Error("Não autenticado");
-
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      const { error: subError } = await supabase.from("subscriptions").insert({
-        client_id: session.user.id,
-        plan_name: plan.name,
-        status: "active",
-        price_paid: plan.price,
-        barber_points_monthly: plan.pointsMonthly,
-        expires_at: expiresAt.toISOString(),
+      
+      const result = await createSubFn({
+        data: {
+          planName: plan.name,
+          planPrice: plan.price,
+          userId: session.user.id,
+          userEmail: session.user.email || "",
+          userName: profile?.full_name || "Membro",
+        }
       });
 
-      if (subError) throw subError;
+      setPixData({
+        encodedImage: result.encodedImage,
+        payload: result.payload,
+      });
+      setPixKey(result.payload);
 
-      // Update profile points
-      const currentPoints = profile?.barber_points || 0;
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({ barber_points: currentPoints + plan.pointsMonthly })
-        .eq("id", session.user.id);
-
-      if (profileError) throw profileError;
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-subscription"] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Assinatura confirmada! Bem-vindo à irmandade.");
-      setShowConfirmModal(false);
-      setSelectedPlan(null);
+      toast.info("QR Code PIX gerado. Pague para ativar sua assinatura.");
     },
     onError: (error: any) => {
-      toast.error("Erro ao processar assinatura: " + error.message);
+      toast.error("Erro ao gerar pagamento: " + error.message);
     },
   });
 
@@ -411,46 +407,61 @@ function MembershipPage() {
                 </div>
               </div>
 
-              <div className="p-6 rounded-2xl bg-black border border-primary/20 text-center space-y-4">
-                <p className="text-sm font-bold text-primary uppercase tracking-widest">
-                  Pagamento Instantâneo via PIX
-                </p>
-                <div className="w-48 h-48 bg-white mx-auto rounded-xl p-2 flex items-center justify-center">
-                  <QrCode className="w-full h-full text-black" />
-                </div>
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">
-                    Escaneie o código acima ou use a chave abaixo:
+              {pixData ? (
+                <div className="p-6 rounded-2xl bg-black border border-primary/20 text-center space-y-4 animate-in fade-in zoom-in duration-300">
+                  <p className="text-sm font-bold text-primary uppercase tracking-widest">
+                    Pagamento Instantâneo via PIX
                   </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-primary hover:text-primary hover:bg-primary/10 gap-2 font-mono text-xs w-full"
-                    onClick={() => {
-                      navigator.clipboard.writeText(pixKey);
-                      toast.success("Chave PIX copiada!");
-                    }}
-                  >
-                    <ClipboardCheck className="w-4 h-4" />
-                    {pixKey || "Carregando chave..."}
-                  </Button>
+                  <div className="w-48 h-48 bg-white mx-auto rounded-xl p-2 flex items-center justify-center">
+                    <img
+                      src={`data:image/png;base64,${pixData.encodedImage}`}
+                      alt="PIX QR Code"
+                      className="w-full h-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Escaneie o código acima ou use a chave abaixo:
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-primary hover:text-primary hover:bg-primary/10 gap-2 font-mono text-[10px] w-full break-all whitespace-normal h-auto py-3"
+                      onClick={() => {
+                        navigator.clipboard.writeText(pixData.payload);
+                        toast.success("Copiado para a área de transferência!");
+                      }}
+                    >
+                      <Copy className="w-3 h-3 shrink-0" />
+                      {pixData.payload}
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-zinc-500 italic">
+                    Sua assinatura será ativada automaticamente após a confirmação.
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div className="p-12 text-center text-zinc-500 border border-white/5 rounded-2xl">
+                  Aguardando confirmação dos dados...
+                </div>
+              )}
             </div>
-
-            <DialogFooter>
-              <Button
-                onClick={() => subscribeMutation.mutate(selectedPlan!)}
-                disabled={subscribeMutation.isPending || !clientInfo.name || !clientInfo.phone}
-                className="w-full bg-primary hover:bg-primary/90 text-black font-bold h-12 rounded-xl"
-              >
-                {subscribeMutation.isPending ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  "Confirmar Assinatura"
-                )}
-              </Button>
-            </DialogFooter>
+ 
+            {!pixData && (
+              <DialogFooter>
+                <Button
+                  onClick={() => subscribeMutation.mutate(selectedPlan!)}
+                  disabled={subscribeMutation.isPending || !clientInfo.name || !clientInfo.phone}
+                  className="w-full bg-primary hover:bg-primary/90 text-black font-bold h-12 rounded-xl"
+                >
+                  {subscribeMutation.isPending ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    "Gerar Pagamento PIX"
+                  )}
+                </Button>
+              </DialogFooter>
+            )}
           </DialogContent>
         </Dialog>
 

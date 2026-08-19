@@ -54,6 +54,9 @@ function LandingPage() {
   const [highlights, setHighlights] = useState<any[]>([]);
   const [onlineVisitors, setOnlineVisitors] = useState(12);
   const [todayAppointments, setTodayAppointments] = useState(0);
+  const [shopName, setShopName] = useState("The Royal Cut");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [address, setAddress] = useState("");
 
   // Social Proof Notification State
   const [lastNotification, setLastNotification] = useState<any>(null);
@@ -138,7 +141,23 @@ function LandingPage() {
   }, [fetchTodayAppointments, fetchRandomSocialNotification]);
 
   useEffect(() => {
+    supabase
+      .from('system_settings')
+      .select('key, value')
+      .in('key', ['barber_shop_name', 'whatsapp_number', 'address'])
+      .then(({ data }) => {
+        if (data) {
+          const map = Object.fromEntries(data.map(d => [d.key, String(d.value).replace(/^"|"$/g, '')]));
+          if (map["barber_shop_name"]) setShopName(map["barber_shop_name"]);
+          if (map["whatsapp_number"]) setWhatsapp(map["whatsapp_number"]);
+          if (map["address"]) setAddress(map["address"]);
+        }
+      });
+  }, []);
+
+  useEffect(() => {
     async function fetchData() {
+
       // Fetch Barbers
       const { data: barbersData } = await supabase.from("barbers").select("*");
       if (barbersData && barbersData.length > 0) {
@@ -255,7 +274,7 @@ function LandingPage() {
                 </span>
               </div>
               <h1 className="text-4xl md:text-5xl lg:text-7xl font-serif font-bold text-white mb-6 leading-tight text-center lg:text-left">
-                The Royal Cut <br />
+                {shopName} <br />
                 <span className="text-primary italic">Barbearia e Irmandade</span>
               </h1>
               <p className="max-w-2xl mx-auto lg:mx-0 text-lg md:text-xl text-gray-300 mb-10 text-center lg:text-left">

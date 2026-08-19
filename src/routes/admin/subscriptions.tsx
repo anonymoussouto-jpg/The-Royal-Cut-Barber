@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Crown,
   Calendar as CalendarIcon,
@@ -30,6 +32,31 @@ export const Route = createFileRoute("/admin/subscriptions")({
 });
 
 function AdminSubscriptions() {
+  const queryClient = useQueryClient();
+
+  const cancelMutation = useMutation({
+    mutationFn: async (subscriptionId: string) => {
+      const { error } = await supabase
+        .from("subscriptions")
+        .update({ status: "cancelled", ended_at: new Date().toISOString() } as any)
+        .eq("id", subscriptionId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-subscriptions"] });
+      toast.success("Assinatura cancelada com sucesso");
+    },
+    onError: (error: any) => {
+      toast.error("Erro ao cancelar assinatura: " + error.message);
+    },
+  });
+
+  const handleCancelSubscription = (subscriptionId: string) => {
+    if (!window.confirm("Deseja realmente cancelar esta assinatura?")) return;
+    cancelMutation.mutate(subscriptionId);
+  };
+
   const { data: subscriptions, isLoading } = useQuery({
     queryKey: ["admin-subscriptions"],
     queryFn: async () => {
@@ -157,12 +184,13 @@ function AdminSubscriptions() {
                 <TableHead>Início</TableHead>
                 <TableHead>Vencimento</TableHead>
                 <TableHead className="text-right">Valor Pago</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {subscriptions?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-20 text-white/20">
+                  <TableCell colSpan={7} className="text-center py-20 text-white/20">
                     <HelpCircle className="w-12 h-12 mx-auto mb-4 opacity-20" />
                     Nenhuma assinatura encontrada.
                   </TableCell>
@@ -198,6 +226,24 @@ function AdminSubscriptions() {
                     </TableCell>
                     <TableCell className="text-right font-bold text-primary">
                       R$ {Number(sub.price_paid).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {sub.status === "active" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 text-[10px] font-bold uppercase tracking-wider gap-1"
+                          onClick={() => handleCancelSubscription(sub.id)}
+                          disabled={cancelMutation.isPending}
+                        >
+                          {cancelMutation.isPending ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <XCircle className="w-3 h-3" />
+                          )}
+                          Cancelar
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
