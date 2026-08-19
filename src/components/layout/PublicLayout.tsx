@@ -27,11 +27,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useShopStore } from "@/hooks/use-shop-store";
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   const booking = useBooking();
   const chatbot = useChatbot();
   const location = useLocation();
+  const { items } = useShopStore();
+  const cartCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
   const [footerConfig, setFooterConfig] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -161,9 +164,16 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
             </Link>
             <Link
               to="/shop"
-              className={`text-sm font-medium transition-colors relative py-1 ${isLinkActive("/shop") ? "text-primary" : "hover:text-primary"}`}
+              className={`text-sm font-medium transition-colors relative py-1 flex items-center gap-2 ${isLinkActive("/shop") ? "text-primary" : "hover:text-primary"}`}
             >
-              Loja
+              <div className="relative">
+                Loja
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-4 bg-primary text-black text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-background">
+                    {cartCount > 9 ? "9+" : cartCount}
+                  </span>
+                )}
+              </div>
               {isLinkActive("/shop") && (
                 <motion.div
                   layoutId="activeNav"
@@ -204,9 +214,14 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
             <Link
               to="/shop"
               title="Loja"
-              className={`${isLinkActive("/shop") ? "text-primary" : "text-white/50 hover:text-white"}`}
+              className={`relative ${isLinkActive("/shop") ? "text-primary" : "text-white/50 hover:text-white"}`}
             >
               <ShoppingBag className="w-5 h-5" />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-primary text-black text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-background">
+                  {cartCount > 9 ? "9+" : cartCount}
+                </span>
+              )}
             </Link>
             <Link
               to="/membership"
@@ -413,9 +428,16 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 
           <Link
             to="/shop"
-            className={`flex flex-col items-center justify-center gap-1 w-full min-w-[44px] min-h-[44px] transition-colors ${isLinkActive("/shop") ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+            className={`flex flex-col items-center justify-center gap-1 w-full min-w-[44px] min-h-[44px] transition-colors relative ${isLinkActive("/shop") ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
           >
-            <ShoppingBag className="w-5 h-5" />
+            <div className="relative">
+              <ShoppingBag className="w-5 h-5" />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-primary text-black text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-background">
+                  {cartCount > 9 ? "9+" : cartCount}
+                </span>
+              )}
+            </div>
             <span className="text-[9px] font-bold uppercase">Loja</span>
           </Link>
           <button
