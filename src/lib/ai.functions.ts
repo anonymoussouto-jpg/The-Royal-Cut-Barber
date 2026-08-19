@@ -47,7 +47,15 @@ export const testApiKey = createServerFn({ method: "POST" })
   });
 
 export const getChatbotResponse = createServerFn({ method: "POST" })
-  .validator((data) => z.object({ messages: z.array(z.object({ role: z.string(), content: z.string() })), servicesContext: z.string(), barbersContext: z.string() }).parse(data))
+  .validator((data) =>
+    z.object({
+      messages: z.array(z.object({ role: z.string(), content: z.string() })),
+      servicesContext: z.string(),
+      barbersContext: z.string(),
+      productsContext: z.string().optional().default(''),
+      shopContext: z.string().optional().default(''),
+    }).parse(data)
+  )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const keysTried: any[] = [];
@@ -58,8 +66,34 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
     const aiSystemPrompt = getSetting("ai_system_prompt");
     const aiMaxChars = getSetting("ai_max_chars");
     const aiDelay = parseInt(getSetting("ai_response_delay_ms") || "0");
-    let prompt = aiSystemPrompt || "Você é a Royal IA, assistente virtual da The Royal Cut Barber do Thiago. Atenda com excelência, honra e cavalheirismo cristão.";
-    prompt += `\n\nSERVIÇOS: ${data.servicesContext}\nEQUIPE: ${data.barbersContext}`;
+    let prompt = aiSystemPrompt ||
+      `IDENTIDADE: Você é a Royal IA, secretária virtual da The Royal Cut Barber, barbearia cristã do Thiago. Missão: excelência, cuidado e fé.
+    ESTILO OBRIGATÓRIO:
+    - Máx 150 caracteres por mensagem
+    - Separe múltiplas mensagens com ||
+    - Máx 3 mensagens por vez
+    - Aguarde resposta antes de continuar
+    - Direto, acolhedor, humanizado. Nunca invente dados.
+    SAUDAÇÃO INICIAL:
+    "Olá! 👑 Bem-vindo à Royal Cut!" || "Como posso servir você hoje?" || [OPCOES: Agendar|Serviços|Preços|Localização]
+    FLUXO DE AGENDAMENTO:
+    1) Pergunte qual serviço (liste os disponíveis)
+    2) Pergunte qual barbeiro (liste os disponíveis)
+    3) Pergunte que dia prefere
+    4) Mostre horários livres naquele dia
+    5) Peça nome completo e WhatsApp
+    6) Confirme com resumo e inclua: [AGENDAR:Barbeiro|Servico|YYYY-MM-DD|HH:MM|Nome|Telefone]
+    FLUXO DE DÚVIDAS:
+    Use apenas os dados fornecidos. Para casos complexos: direcione ao WhatsApp.
+    FÉ CRISTÃ:
+    Use "Com a graça de Deus", "Deus abençoe" naturalmente, sem exagero.
+    QUICK REPLIES:
+    Ao final quando fizer sentido: [OPCOES: op1|op2|op3|op4]
+    Máx 4 opções, cada uma máx 25 caracteres.`;
+    prompt += `\n\nSERVIÇOS (nome, preço, duração): ${data.servicesContext}`;
+    prompt += `\nBARBEIROS DISPONÍVEIS: ${data.barbersContext}`;
+    if (data.productsContext) prompt += `\nPRODUTOS DA LOJA: ${data.productsContext}`;
+    if (data.shopContext) prompt += `\nINFO DA BARBEARIA: ${data.shopContext}`;
     if (aiMaxChars) prompt += `\n- Não ultrapasse ${aiMaxChars} caracteres.`;
     const gemini = ["gemini_api_key_1","gemini_api_key_2","gemini_api_key_3"].map(n => ({ name: n, key: getSetting(n) })).filter(e => e.key);
     const groq = ["groq_api_key_1","groq_api_key_2"].map(n => ({ name: n, key: getSetting(n) })).filter(e => e.key);
@@ -137,4 +171,49 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
     }
     await saveLog({ success: false, error: "Todas as chaves falharam." });
     return { content: "Desculpe, não consegui processar agora. Tente novamente. 🔱" };
+  });
+
+export const getAvailableSlots = createServerFn({ method: "POST" })
+  .validator((data) =>
+    z.object({
+      barberId: z.string(),
+      date: z.string(),
+    }).parse(data)
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const allSlots = [
+      "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+      "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
+      "16:00", "16:30", "17:00", "17:30", "18:00", "18:30",
+      "19:00", "19:30"
+    ];
+
+    const dayStart = new Date(`${data.date}T00:00:00`);
+    const dayEnd = new Date(`${data.date}T23:59:59`);
+
+    const { data: bookedAppts } = await (supabaseAdmin as any)
+      .from("appointments")
+      .select("start_time")
+      .eq("barber_id", data.barberId)
+      .neq("status", "cancelled")
+      .gte("start_time", dayStart.toISOString())
+      .lte("start_time", dayEnd.toISOString());
+
+    const blockedSlots = new Set<string>();
+    for (const appt of (bookedAppts || [])) {
+      const start = new Date(appt.start_time);
+      blockedSlots.add(
+        `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
+      );
+    }
+
+    const available = allSlots.filter(slot => !blockedSlots.has(slot));
+
+    return {
+      available,
+      date: data.date,
+      total: available.length,
+    };
   });

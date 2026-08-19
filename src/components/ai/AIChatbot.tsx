@@ -27,6 +27,7 @@ export function AIChatInterface({ inline = false }: AIChatInterfaceProps) {
   const isOpen = inline ? true : isGlobalOpen;
   const [showBubble, setShowBubble] = useState(true);
   const [message, setMessage] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState('');
   const [messages, setMessages] = useState<
     {
       role: "assistant" | "user" | "system";
@@ -34,7 +35,7 @@ export function AIChatInterface({ inline = false }: AIChatInterfaceProps) {
       metadata?: Record<string, any> | null;
     }[]
   >([]);
-  
+  const [dynamicQuickReplies, setDynamicQuickReplies] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -54,6 +55,17 @@ export function AIChatInterface({ inline = false }: AIChatInterfaceProps) {
     } else {
       setDefaultMessage();
     }
+  }, []);
+
+  useEffect(() => {
+    supabase.from('system_settings').select('value').eq('key', 'whatsapp_number').maybeSingle()
+      .then(({ data }) => {
+        if (data?.value) {
+          try { setWhatsappNumber(typeof data.value === 'string' && data.value.startsWith('"') ?
+            JSON.parse(data.value) : String(data.value)); }
+          catch { setWhatsappNumber(String(data.value)); }
+        }
+      });
   }, []);
 
   // Save messages to localStorage whenever they change
@@ -102,20 +114,44 @@ export function AIChatInterface({ inline = false }: AIChatInterfaceProps) {
     setError(null);
 
     try {
-      // Mock duration check or actual fetch context if needed
-      const [{ data: services }, { data: barbers }] = await Promise.all([
-        supabase.from('services').select('*').eq('is_active', true),
-        supabase.from('barbers').select('*')
+      const [
+        { data: services },
+        { data: barbers },
+        { data: products },
+        { data: shopInfo }
+      ] = await Promise.all([
+        supabase.from('services').select('name, price, duration_minutes').eq('is_active', true),
+        (supabase.from('barbers') as any).select('full_name, specialties'),
+        supabase.from('products').select('name, price').eq('is_available', true).limit(8),
+        supabase.from('system_settings').select('key, value')
+          .in('key', ['barber_shop_name', 'address', 'whatsapp_number', 'business_hours']),
       ]);
 
-      const servicesContext = services?.map(s => `${s.name}: R$ ${s.price}`).join(', ') || '';
-      const barbersContext = barbers?.map(b => b.full_name).join(', ') || '';
+      const getInfo = (key: string) => {
+        const row = shopInfo?.find((s: any) => s.key === key);
+        if (!row?.value) return '';
+        try { return typeof row.value === 'string' && row.value.startsWith('"') ? JSON.parse(row.value) : String(row.value); }
+        catch { return String(row.value || ''); }
+      };
+
+      const servicesContext = services?.map(s =>
+        `${s.name}: R$ ${s.price}${s.duration_minutes ? ` (${s.duration_minutes}min)` : ''}`
+      ).join(', ') || '';
+      
+      const barbersContext = (barbers as any[])?.map(b =>
+        `${b.full_name}${b.specialties?.length ? ` (${b.specialties.slice(0, 2).join(', ')})` : ''}`
+      ).join(', ') || '';
+
+      const productsContext = products?.map((p: any) => `${p.name}: R$ ${p.price}`).join(', ') || '';
+      const shopContext = `Nome: ${getInfo('barber_shop_name')} | Endereço: ${getInfo('address')} | WhatsApp: ${getInfo('whatsapp_number')} | Horário: ${getInfo('business_hours') || 'Seg-Sab 9h-20h'}`;
 
       const result = await getChatbotFn({ 
         data: { 
           messages: history.map(m => ({ role: m.role, content: m.content })), 
           servicesContext, 
           barbersContext,
+          productsContext,
+          shopContext,
         } 
       });
 
@@ -123,7 +159,98 @@ export function AIChatInterface({ inline = false }: AIChatInterfaceProps) {
         throw new Error("Resposta vazia da IA");
       }
 
-      setMessages(prev => [...prev, { role: "assistant", content: result.content }]);
+      const rawParts = result.content.split('||').map((p: string) => p.trim()).filter(Boolean);
+      const optionsMatch = result.content.match(/\[OPCOES:(.*?)\]/);
+      let quickReplies: string[] = [];
+
+      if (optionsMatch) {
+        quickReplies = optionsMatch[1].split('|').map((o: string) => o.trim()).filter(Boolean);
+      }
+
+      const cleanParts = rawParts.map((part: string) =>
+        part.replace(/\[OPCOES:.*?\]/g, '').replace(/\[AGENDAR:.*?\]/g, '').trim()
+      ).filter(Boolean);
+
+      for (let i = 0; i < cleanParts.length; i++) {
+        if (i > 0) await new Promise(resolve => setTimeout(resolve, 700));
+        setMessages(prev => [...prev, { role: "assistant" as const, content: cleanParts[i] }]);
+      }
+
+      setDynamicQuickReplies(quickReplies);
+
+      // Detectar e processar agendamento quando a IA confirmar todos os dados
+      const bookingMatch = result.content.match(/\[AGENDAR:(.*?)\]/);
+      if (bookingMatch) {
+        const parts = bookingMatch[1].split('|');
+        const [barberName, serviceName, date, time, clientName, clientPhone] = parts;
+        try {
+          const [{ data: barberData }, { data: serviceData }] = await Promise.all([
+            supabase.from('barbers').select('id').ilike('full_name', `%${(barberName || '').trim()}%`).limit(1).single(),
+            supabase.from('services').select('id, price, duration_minutes').ilike('name', `%${(serviceName || '').trim()}%`).limit(1).single(),
+          ]);
+
+          if (barberData && serviceData) {
+            const phone = (clientPhone || '').replace(/\D/g, '');
+            let clientId: string;
+            const { data: existingProfile } = await supabase
+              .from('profiles').select('id').eq('phone', phone).maybeSingle();
+            
+            if (existingProfile) {
+              clientId = existingProfile.id;
+            } else {
+              const newId = crypto.randomUUID();
+              await supabase.from('profiles').insert({
+                id: newId,
+                full_name: (clientName || '').trim(),
+                phone: phone,
+                is_guest: true,
+              });
+              clientId = newId;
+            }
+
+            const startTime = new Date(`${date}T${time}:00`);
+            const { error: bookingError } = await supabase.from('appointments').insert({
+              client_id: clientId,
+              barber_id: barberData.id,
+              service_id: serviceData.id,
+              client_name: (clientName || '').trim(),
+              client_phone: phone,
+              start_time: startTime.toISOString(),
+              total_price: serviceData.price,
+              status: 'pending',
+              payment_status: 'pending',
+            });
+
+            if (!bookingError) {
+              const dateFormatted = startTime.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+              await new Promise(r => setTimeout(r, 700));
+              setMessages(prev => [
+                ...prev,
+                { role: "assistant" as const, content: `✅ Agendado com sucesso! 🎉` },
+                { role: "assistant" as const, content: `${serviceName} com ${barberName}` },
+                { role: "assistant" as const, content: `📅 ${dateFormatted} às ${time}. Te esperamos! 🔱` },
+              ]);
+              setDynamicQuickReplies(['Ver meu agendamento', 'Voltar ao início']);
+            } else {
+              setMessages(prev => [...prev, {
+                role: "assistant" as const,
+                content: `⚠️ Não consegui confirmar. Fale conosco no WhatsApp.`
+              }]);
+            }
+          } else {
+            setMessages(prev => [...prev, {
+              role: "assistant" as const,
+              content: `⚠️ Dados não encontrados. Vamos tentar novamente?`
+            }]);
+          }
+        } catch (err) {
+          console.error('Erro ao agendar pelo chat:', err);
+          setMessages(prev => [...prev, {
+            role: "assistant" as const,
+            content: `⚠️ Erro ao agendar. Fale conosco no WhatsApp.`
+          }]);
+        }
+      }
     } catch (err: any) {
       console.error("AI Error:", err);
       const errorMessage = err.message?.includes("API key") 
@@ -241,8 +368,13 @@ export function AIChatInterface({ inline = false }: AIChatInterfaceProps) {
               {messages.map((msg, i) => (
                 <div
                   key={i}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
+                  {msg.role === "assistant" && (
+                    <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-sm shrink-0">
+                      👑
+                    </div>
+                  )}
                   <div
                     className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${
                       msg.role === "user"
@@ -281,26 +413,12 @@ export function AIChatInterface({ inline = false }: AIChatInterfaceProps) {
                 </div>
               ))}
               {isTyping && (
-                <div className="flex justify-start">
-                  <div className="bg-muted p-4 rounded-2xl rounded-tl-none border border-border/40 flex items-center gap-3">
-                    <div className="flex gap-1">
-                      <motion.span 
-                        animate={{ opacity: [0.4, 1, 0.4] }} 
-                        transition={{ repeat: Infinity, duration: 1.2, delay: 0 }}
-                        className="w-1.5 h-1.5 bg-primary rounded-full" 
-                      />
-                      <motion.span 
-                        animate={{ opacity: [0.4, 1, 0.4] }} 
-                        transition={{ repeat: Infinity, duration: 1.2, delay: 0.2 }}
-                        className="w-1.5 h-1.5 bg-primary rounded-full" 
-                      />
-                      <motion.span 
-                        animate={{ opacity: [0.4, 1, 0.4] }} 
-                        transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }}
-                        className="w-1.5 h-1.5 bg-primary rounded-full" 
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground italic font-medium">Royal IA está pensando...</span>
+                <div className="flex items-end gap-2 justify-start px-4">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs shrink-0">👑</div>
+                  <div className="bg-muted rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               )}
@@ -345,18 +463,51 @@ export function AIChatInterface({ inline = false }: AIChatInterfaceProps) {
                 ))}
               </div>
 
+              {dynamicQuickReplies.length > 0 && (
+                <div className="flex flex-wrap gap-2 px-3 py-2">
+                  {dynamicQuickReplies.map((reply, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => { setDynamicQuickReplies([]); handleSend(reply); }}
+                      className="text-xs px-3 py-1.5 rounded-full border border-primary/50 text-primary hover:bg-primary/10 transition-colors font-medium"
+                    >
+                      {reply}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="flex gap-2">
-                <Input
-                  placeholder="Como posso ajudar?"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                  className="rounded-full bg-background border-border/40"
-                />
+                <div className="flex-grow">
+                  <Input
+                    placeholder="Como posso ajudar?"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                    className="rounded-full bg-background border-border/40"
+                  />
+                  <div className="flex justify-end px-1 mt-0.5">
+                    <span className={`text-[10px] ${message.length > 450 ? 'text-red-400' : 'text-muted-foreground/50'}`}>
+                      {message.length}/500
+                    </span>
+                  </div>
+                </div>
+                {whatsappNumber && (
+                  <a
+                    href={`https://wa.me/55${whatsappNumber.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-full bg-green-500 hover:bg-green-600 text-white transition-colors flex items-center justify-center shrink-0 w-10 h-10"
+                    title="Falar no WhatsApp"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                  </a>
+                )}
                 <Button
                   onClick={() => handleSend()}
                   size="icon"
-                  className="rounded-full shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="rounded-full shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 w-10 h-10"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
