@@ -54,6 +54,7 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
       barbersContext: z.string(),
       productsContext: z.string().optional().default(''),
       shopContext: z.string().optional().default(''),
+      debug: z.boolean().optional().default(false),
     }).parse(data)
   )
   .handler(async ({ data }) => {
@@ -124,12 +125,12 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
         const elapsed = Math.round(performance.now() - t0);
         if (res.ok) { 
           const j = await res.json(); 
-          let text = j.candidates?.[0]?.content?.parts?.[0]?.text; 
-          if (text) { 
-            text = text.replace(/<[tT]hink>[\s\S]*?<\/[tT]hink>/g, '').trim(); 
+          let rawText = j.candidates?.[0]?.content?.parts?.[0]?.text; 
+          if (rawText) { 
+            const text = rawText.replace(/<[tT]hink>[\s\S]*?<\/[tT]hink>/g, '').trim(); 
             keysTried.push({ keyName: item.name, provider: "gemini", status: "success", responseTimeMs: elapsed }); 
-            await saveLog({ success: true, provider_used: item.name, preview_response: text.slice(0, 150) }); 
-            return { content: text }; 
+            await saveLog({ success: true, provider_used: item.name, preview_response: text.slice(0, 150), raw_response: data.debug ? rawText : undefined }); 
+            return { content: text, raw: data.debug ? rawText : undefined }; 
           } 
         }
 
@@ -157,12 +158,12 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
         const elapsed = Math.round(performance.now() - t0);
         if (res.ok) { 
           const j = await res.json(); 
-          let text = j.choices?.[0]?.message?.content; 
-          if (text) { 
-            text = text.replace(/<[tT]hink>[\s\S]*?<\/[tT]hink>/g, '').trim(); 
+          let rawText = j.choices?.[0]?.message?.content; 
+          if (rawText) { 
+            const text = rawText.replace(/<[tT]hink>[\s\S]*?<\/[tT]hink>/g, '').trim(); 
             keysTried.push({ keyName: item.name, provider: "groq", status: "success", responseTimeMs: elapsed }); 
-            await saveLog({ success: true, provider_used: item.name, preview_response: text.slice(0, 150) }); 
-            return { content: text }; 
+            await saveLog({ success: true, provider_used: item.name, preview_response: text.slice(0, 150), raw_response: data.debug ? rawText : undefined }); 
+            return { content: text, raw: data.debug ? rawText : undefined }; 
           } 
         }
 

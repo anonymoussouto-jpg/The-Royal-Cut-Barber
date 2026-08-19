@@ -48,7 +48,8 @@ function AdminSettings() {
   const [keyStatuses, setKeyStatuses] = useState<Record<string, { status: "ok" | "error"; message: string; responseTime?: number }>>({});
   const [testingKey, setTestingKey] = useState<Record<string, boolean>>({});
   const [testingChatbot, setTestingChatbot] = useState(false);
-  const [chatbotTestResult, setChatbotTestResult] = useState<{ success: boolean; response?: string; error?: string } | null>(null);
+  const [showSanitizedPreview, setShowSanitizedPreview] = useState(false);
+  const [chatbotTestResult, setChatbotTestResult] = useState<{ success: boolean; response?: string; raw?: string; error?: string } | null>(null);
   const [lastLog, setLastLog] = useState<any>(null);
   const REPO_NAME = "anonymoussouto-jpg/The-Royal-Cut-Barber";
 
@@ -270,11 +271,12 @@ function AdminSettings() {
         data: { 
           messages: [{ role: "user", content: "Olá! Quais serviços vocês oferecem?" }], 
           servicesContext: "Corte Masculino: R$ 50, Barba: R$ 35", 
-          barbersContext: "Thiago" 
+          barbersContext: "Thiago",
+          debug: true
         } 
       });
       if (res?.content) { 
-        setChatbotTestResult({ success: true, response: res.content }); 
+        setChatbotTestResult({ success: true, response: res.content, raw: res.raw }); 
         toast.success("Chatbot respondeu!"); 
       } else { 
         setChatbotTestResult({ success: false, error: "Sem resposta." }); 
@@ -750,18 +752,67 @@ function AdminSettings() {
                       </h4>
                       <p className="text-[10px] text-muted-foreground">Simula uma pergunta real passando por todo o fallback</p>
                     </div>
-                    <Button onClick={handleTestFullChatbot} disabled={testingChatbot} className="bg-primary text-black">
-                      {testingChatbot ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Play className="w-4 h-4 mr-2" />}
-                      Testar Chatbot
-                    </Button>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 mr-4">
+                        <Switch 
+                          checked={showSanitizedPreview}
+                          onCheckedChange={setShowSanitizedPreview}
+                        />
+                        <Label className="text-[10px] uppercase font-bold tracking-tight">Ver como o cliente</Label>
+                      </div>
+                      <Button onClick={handleTestFullChatbot} disabled={testingChatbot} className="bg-primary text-black">
+                        {testingChatbot ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                        Testar Chatbot
+                      </Button>
+                    </div>
                   </div>
 
                   {chatbotTestResult && (
-                    <div className="mt-4 p-4 rounded-xl bg-black/60 border border-white/10 space-y-2">
-                      <p className="text-[10px] font-bold uppercase text-primary">{chatbotTestResult.success ? "✅ Resposta recebida:" : "❌ Erro:"}</p>
-                      <div className="text-xs text-white/80 leading-relaxed italic p-3 rounded-lg bg-white/5 border border-white/5 italic">
-                        {chatbotTestResult.response || chatbotTestResult.error}
-                      </div>
+                    <div className="mt-4 p-4 rounded-xl bg-black/60 border border-white/10 space-y-4">
+                      <p className="text-[10px] font-bold uppercase text-primary">
+                        {chatbotTestResult.success ? (showSanitizedPreview ? "👀 Visualização do Cliente:" : "✅ Resposta Recebida:") : "❌ Erro:"}
+                      </p>
+                      
+                      {chatbotTestResult.success ? (
+                        showSanitizedPreview ? (
+                          <div className="space-y-2">
+                            {chatbotTestResult.response?.split('||').map((part, idx) => {
+                              const cleanPart = part.replace(/\[OPCOES:.*?\]/g, '').replace(/\[AGENDAR:.*?\]/g, '').trim();
+                              if (!cleanPart) return null;
+                              return (
+                                <div key={idx} className="flex gap-2 justify-start items-start">
+                                  <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] shrink-0">👑</div>
+                                  <div className="bg-zinc-800 text-white p-3 rounded-2xl rounded-tl-none text-xs border border-white/5 max-w-[90%]">
+                                    {cleanPart}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            <p className="text-[9px] text-muted-foreground italic mt-2">
+                              * Tags técnicas e tags de agendamento ocultadas visualmente.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="text-xs text-white/80 leading-relaxed p-3 rounded-lg bg-white/5 border border-white/5">
+                              {chatbotTestResult.response}
+                            </div>
+                            {chatbotTestResult.raw && chatbotTestResult.raw !== chatbotTestResult.response && (
+                              <div className="space-y-1">
+                                <p className="text-[9px] font-bold text-white/40 uppercase">Conteúdo Bruto (incluindo Think):</p>
+                                <div className="text-[10px] text-white/40 p-2 bg-black/40 rounded border border-white/5 font-mono max-h-32 overflow-y-auto">
+                                  {chatbotTestResult.raw}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      ) : (
+                        <div className="text-xs text-red-400 p-3 rounded-lg bg-red-500/10 border border-red-500/10 font-mono">
+                          {chatbotTestResult.error}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -793,7 +844,24 @@ function AdminSettings() {
                       </div>
 
                       {lastLog.error && <div className="p-2 rounded bg-red-500/10 border border-red-500/20 text-[10px] text-red-400 font-mono">{lastLog.error}</div>}
-                      {lastLog.preview_response && <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-[10px] text-white/70 italic italic">"{lastLog.preview_response}"</div>}
+                      
+                      {lastLog.raw_response && (
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-white/40 uppercase">Resposta Bruta:</p>
+                          <div className="p-2 rounded bg-black/40 border border-white/5 text-[9px] text-white/50 font-mono max-h-24 overflow-y-auto">
+                            {lastLog.raw_response}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {lastLog.preview_response && (
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-white/40 uppercase">Resposta Sanitizada:</p>
+                          <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-[10px] text-white/70 italic">
+                            "{lastLog.preview_response}"
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}
