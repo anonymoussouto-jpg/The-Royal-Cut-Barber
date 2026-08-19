@@ -81,12 +81,8 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
     2) Pergunte qual barbeiro (liste os disponíveis)
     3) Pergunte que dia prefere
     4) Mostre horários livres naquele dia
-    5) Se o cliente perguntar horários, você DEVE dizer que vai verificar. Chame internamente a função de horários (simulada via prompt para agora, mas use os dados reais se disponíveis).
-    6) Peça nome completo e WhatsApp
-    7) Confirme com resumo e inclua: [AGENDAR:Barbeiro|Servico|YYYY-MM-DD|HH:MM|Nome|Telefone]
-    8) Se o agendamento for confirmado, responda com o texto de confirmação e a tag.
-    9) IMPORTANTE: Sempre responda de forma curta e particionada com ||.
-    10) Ao final de cada resposta, se fizer sentido, use: [OPCOES: Opção 1|Opção 2]
+    5) Peça nome completo e WhatsApp
+    6) Confirme com resumo e inclua: [AGENDAR:Barbeiro|Servico|YYYY-MM-DD|HH:MM|Nome|Telefone]
     FLUXO DE DÚVIDAS:
     Use apenas os dados fornecidos. Para casos complexos: direcione ao WhatsApp.
     FÉ CRISTÃ:
