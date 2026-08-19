@@ -50,6 +50,7 @@ export function BookingModal() {
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [asaasData, setAsaasData] = useState<any>(null);
   const [lastAppointmentId, setLastAppointmentId] = useState<string | null>(null);
+  const [createdAppointmentId, setCreatedAppointmentId] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(900); // 15 minutes in seconds
   const [isExpired, setIsExpired] = useState(false);
 
@@ -218,10 +219,31 @@ export function BookingModal() {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const handleRegeneratePix = () => {
+  const handleRegeneratePix = async () => {
+    if (!selectedService || !selectedBarber) return;
+    setStep("payment_pix");
     setTimeLeft(900);
     setIsExpired(false);
-    handleBooking("PIX");
+
+    if (!createdAppointmentId) return;
+
+    try {
+      const result = await startPaymentFn({
+        data: {
+          orderId: createdAppointmentId,
+          amount: selectedService.price,
+          customerName: clientName,
+          mobilePhone: clientPhone,
+          billingType: "PIX",
+          entityType: "appointment",
+        }
+      });
+      if (result) {
+        setAsaasData(result);
+      }
+    } catch (err) {
+      toast.error("Erro ao gerar novo PIX. Tente novamente.");
+    }
   };
 
   const handleBooking = async (paymentMethod: "PIX" | "CREDIT_CARD" | "IN_PERSON") => {
@@ -291,6 +313,7 @@ export function BookingModal() {
 
       if (appointmentError) throw appointmentError;
       setLastAppointmentId(appointment.id);
+      setCreatedAppointmentId(appointment.id);
 
       if (paymentMethod === "IN_PERSON") {
         setStep("success");
