@@ -13,6 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useChatbot } from "@/hooks/use-chatbot";
 import { useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { getChatbotResponse } from "@/lib/ai.functions";
 
 export function AIChatbot() {
   const { isOpen, open, close } = useChatbot();
@@ -34,6 +36,7 @@ export function AIChatbot() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const getChatbotFn = useServerFn(getChatbotResponse);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,9 +55,9 @@ export function AIChatbot() {
     if (!textToSend.trim() || isTyping) return;
 
     const userMessage = { role: "user" as const, content: textToSend };
-    const newMessages = [...messages, userMessage];
+    const history = [...messages, userMessage];
 
-    setMessages(newMessages);
+    setMessages(history);
     setMessage("");
     setIsTyping(true);
 
@@ -65,204 +68,26 @@ export function AIChatbot() {
         supabase.from('barbers').select('*')
       ]);
 
-      // 2. Fetch API keys and AI behavior settings
-      const { data: settings } = await supabase
-        .from('system_settings')
-        .select('key, value')
-        .in('key', [
-          'gemini_api_key_1', 
-          'gemini_key_1', 
-          'groq_api_key_1', 
-          'groq_key_1',
-          'ai_system_prompt',
-          'ai_response_delay_ms',
-          'ai_max_chars',
-          'ai_max_messages'
-        ]);
+      const servicesContext = services?.map(s => `${s.name}: R$ ${s.price}`).join(', ') || '';
+      const barbersContext = barbers?.map(b => b.full_name).join(', ') || '';
 
-      const extractKey = (val: any) => {
-        if (!val) return undefined;
-        try {
-          // If it's a JSON string, try to parse it
-          const parsed = typeof val === 'string' && (val.startsWith('{') || val.startsWith('[')) ? JSON.parse(val) : val;
-          // If the result is still a string (common in Supabase JSONB), clean it up
-          const cleanStr = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
-          return cleanStr.replace(/^"|"$/g, '').trim();
-        } catch { 
-          return String(val).replace(/^"|"$/g, '').trim(); 
-        }
-      };
-
-      const aiSystemPrompt = extractKey(settings?.find(s => s.key === 'ai_system_prompt')?.value);
-      const aiResponseDelay = parseInt(extractKey(settings?.find(s => s.key === 'ai_response_delay_ms')?.value) || "20", 10);
-      const aiMaxChars = extractKey(settings?.find(s => s.key === 'ai_max_chars')?.value);
-      const aiMaxMessages = extractKey(settings?.find(s => s.key === 'ai_max_messages')?.value);
-
-      let finalSystemPrompt = aiSystemPrompt || `Você é a Royal IA, assistente virtual da The Royal Cut - Barbearia e Irmandade.
-Sua missão é atender com excelência, honra e cavalheirismo.
-A barbearia é de propriedade do Thiago. O Thiago, além de ser o dono, também é barbeiro, atende clientes e possui agenda disponível para serviços.
-
-SERVIÇOS DISPONÍVEIS:
-${services?.map(s => `- ${s.name}: R$ ${s.price} (${s.duration_minutes} min)`).join('\n')}
-
-NOSSA EQUIPE:
-${barbers?.map(b => `- ${b.full_name}: ${b.bio || 'Barbeiro'}`).join('\n')}
-
-REGRAS:
-- Seja educado e prestativo.
-- Use termos como "honra", "irmandade", "excelência".
-- Confirme que o Thiago atende e possui agenda disponível se perguntado.
-- Para agendamentos, direcione o cliente para o botão de agendamento ou peça para ele dizer o serviço e profissional desejado.
-- Se o cliente perguntar sobre o endereço ou contato, informe que os dados estão no rodapé do site.
-- Mantenha respostas concisas e amigáveis.`;
-
-      if (aiMaxChars) finalSystemPrompt += `\n- REGRA: Não ultrapasse ${aiMaxChars} caracteres.`;
-      if (aiMaxMessages) finalSystemPrompt += `\n- REGRA: Limite a no máximo ${aiMaxMessages} blocos.`;
-
-      const geminiKey = extractKey(settings?.find(s => s.key === 'gemini_api_key_1' || s.key === 'gemini_key_1')?.value);
-      const groqKey = extractKey(settings?.find(s => s.key === 'groq_api_key_1' || s.key === 'groq_key_1')?.value);
-
-      console.log("Chatbot: API Keys check", { 
-        hasGemini: !!geminiKey, 
-        hasGroq: !!groqKey,
-        geminiPrefix: geminiKey ? geminiKey.substring(0, 5) + '...' : 'none',
-        groqPrefix: groqKey ? groqKey.substring(0, 5) + '...' : 'none'
+      // 2. Call server function
+      const result = await getChatbotFn({ 
+        data: { 
+          messages: history, 
+          servicesContext, 
+          barbersContext 
+        } 
       });
 
-      // 3. Prepare and sanitize history for Gemini
-      // Gemini requires first message to be from 'user'
-      let history = [...newMessages];
-      while (history.length > 0 && history[0]?.role !== 'user') {
-        history.shift();
-      }
-
-      if (history.length === 0) {
-        history = [userMessage];
-      }
-
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("TIMEOUT")), 15000)
-      );
-
-      const fetchAIResponse = async () => {
-        if (aiResponseDelay > 0) {
-          await new Promise(resolve => setTimeout(resolve, aiResponseDelay));
-        }
-        
-        // 4. Try Gemini
-        if (geminiKey) {
-          try {
-            const geminiHistory = history.map(msg => ({
-              role: msg.role === 'assistant' ? 'model' : 'user',
-              parts: [{ text: msg.content }]
-            }));
-
-            console.log("Chatbot: Enviando para Gemini...", { 
-              model: "gemini-1.5-flash", 
-              keyUsed: geminiKey.substring(0, 8) + "...",
-              endpoint: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey.substring(0, 5)}...`
-            });
-
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: geminiHistory,
-                systemInstruction: { parts: [{ text: finalSystemPrompt }] }
-              })
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (text) {
-                console.log("Chatbot: Gemini success");
-                return text;
-              }
-            } else {
-              const errorBody = await response.json().catch(() => null);
-              console.error("Chatbot: Erro Gemini", { 
-                status: response.status, 
-                statusText: response.statusText,
-                error: errorBody 
-              });
-            }
-          } catch (e) {
-            console.error("Gemini failed, trying Groq...", e);
-          }
-        }
-
-        // 5. Try Groq fallback
-        if (groqKey) {
-          try {
-            console.log("Chatbot: Enviando para Groq...", { 
-              model: "llama-3.3-70b-versatile", 
-              keyUsed: groqKey.substring(0, 8) + "...",
-              endpoint: "https://api.groq.com/openai/v1/chat/completions"
-            });
-
-            const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${groqKey}`
-              },
-              body: JSON.stringify({
-                model: 'llama-3.3-70b-versatile',
-                messages: [
-                  { role: 'system', content: finalSystemPrompt },
-                  ...history.map(m => ({ role: m.role, content: m.content }))
-                ]
-              })
-            });
-
-            if (groqResponse.ok) {
-              const data = await groqResponse.json();
-              const text = data.choices?.[0]?.message?.content;
-              if (text) {
-                console.log("Chatbot: Groq success");
-                return text;
-              }
-            } else {
-              const errorBody = await groqResponse.json().catch(() => null);
-              console.error("Chatbot: Erro Groq", { 
-                status: groqResponse.status, 
-                statusText: groqResponse.statusText,
-                error: errorBody 
-              });
-            }
-          } catch (e) {
-            console.error("Chatbot: Groq call failed:", e);
-          }
-        }
-
-        throw new Error("Ambos Gemini e Groq falharam ou estão sem chaves.");
-      };
-
-      const aiContent = await Promise.race([
-        fetchAIResponse(),
-        timeoutPromise
-      ]) as string;
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant" as const,
-          content: aiContent || "Desculpe, não consegui processar sua solicitação no momento.",
-        },
-      ]);
+      setMessages(prev => [...prev, { role: "assistant", content: result.content }]);
     } catch (error: any) {
       console.error("AI Error:", error);
-      const errorMessage =
-        error.message === "TIMEOUT"
-          ? "Levei um tempo a mais para pensar... Pode reformular sua pergunta ou tentar em instantes?"
-          : "Houve um erro técnico ao processar sua mensagem. Por favor, tente novamente mais tarde.";
-
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant" as const,
-          content: errorMessage,
+          content: "Houve um erro técnico ao processar sua mensagem. Por favor, tente novamente mais tarde.",
         },
       ]);
     } finally {

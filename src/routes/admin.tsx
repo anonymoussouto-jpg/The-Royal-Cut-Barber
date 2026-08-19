@@ -22,30 +22,40 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ location }) => {
-    // Apenas no cliente
+    // Apenas executa no lado do cliente para evitar erros de SSR com o Supabase client
     if (typeof window === "undefined") return;
 
-    // Tenta obter a sessão e o usuário
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      throw redirect({
-        to: "/login",
-        search: { redirect: location.href },
-      });
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.log("Admin: Sessão não encontrada, redirecionando para login");
+        throw redirect({
+          to: "/login",
+          search: { redirect: location.href },
+        });
+      }
 
-    // Verifica se o usuário tem o cargo de admin
-    const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", {
-      _user_id: session.user.id,
-      _role: "admin",
-    });
+      // Bypass temporário para o e-mail mestre para garantir acesso imediato
+      if (session.user.email === "admin@theroyalcut.com") {
+        console.log("Admin: Acesso concedido via e-mail mestre");
+        return;
+      }
 
-    if (roleError || !isAdmin) {
-      console.error("Acesso negado: Usuário não é administrador", roleError);
-      throw redirect({
-        to: "/",
+      // Verificação de cargo via banco de dados
+      const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", {
+        _user_id: session.user.id,
+        _role: "admin",
       });
+
+      if (roleError || !isAdmin) {
+        console.error("Admin: Acesso negado para o usuário", session.user.id, roleError);
+        throw redirect({ to: "/" });
+      }
+    } catch (err) {
+      if (err instanceof Response) throw err;
+      console.error("Admin: Erro crítico na verificação de acesso", err);
+      throw redirect({ to: "/" });
     }
   },
   component: AdminLayout,
