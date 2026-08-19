@@ -183,7 +183,7 @@ function ProductsManagement() {
 
       if (error) throw error;
       toast.success("Produto removido com sucesso");
-      fetchProducts();
+      await fetchProducts();
     } catch (error) {
       console.error("Error deleting product:", error);
       toast.error("Erro ao excluir produto");
@@ -202,7 +202,7 @@ function ProductsManagement() {
 
       if (error) throw error;
       toast.success(`Estoque atualizado: ${newStock} unidades`);
-      fetchProducts();
+      await fetchProducts();
     } catch (error) {
       console.error("Error updating stock:", error);
       toast.error("Erro ao atualizar estoque");

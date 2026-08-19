@@ -194,7 +194,7 @@ function ServicesManagement() {
 
       if (error) throw error;
       toast.success("Serviço removido com sucesso");
-      fetchServices();
+      await fetchServices();
     } catch (error) {
       console.error("Error deleting service:", error);
       toast.error("Erro ao excluir serviço");

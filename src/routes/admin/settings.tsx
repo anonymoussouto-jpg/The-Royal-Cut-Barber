@@ -77,13 +77,13 @@ function AdminSettings() {
       const { error } = await supabase.from("system_settings").upsert(
         {
           key,
-          value: value, 
+          value: value,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'key' }
       );
       if (error) throw error;
-      setSettings((prev) => ({ ...prev, [key]: value }));
+      await fetchSettings();
       toast.success(`Configuração ${key} salva`);
     } catch (error) {
       console.error("Error saving setting:", error);
@@ -127,6 +127,7 @@ function AdminSettings() {
         }).eq("id", s.id)
       );
       await Promise.all(promises);
+      await fetchServicesCommission();
     }
 
     toast.success("Configurações salvas com sucesso!");

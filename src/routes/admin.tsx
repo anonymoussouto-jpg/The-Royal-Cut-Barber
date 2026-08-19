@@ -25,20 +25,27 @@ export const Route = createFileRoute("/admin")({
     // Apenas no cliente
     if (typeof window === "undefined") return;
 
-    // Tenta obter o usuário verificado
-    const { data: { user }, error } = await supabase.auth.getUser();
+    // Tenta obter a sessão e o usuário
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      throw redirect({
+        to: "/login",
+        search: { redirect: location.href },
+      });
+    }
 
-    if (error || !user) {
-      // Pequeno retry caso o Supabase ainda esteja carregando o token do localStorage
-      await new Promise(resolve => setTimeout(resolve, 300));
-      const { data: { user: retryUser } } = await supabase.auth.getUser();
-      
-      if (!retryUser) {
-        throw redirect({
-          to: "/login",
-          search: { redirect: location.href },
-        });
-      }
+    // Verifica se o usuário tem o cargo de admin
+    const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", {
+      _user_id: session.user.id,
+      _role: "admin",
+    });
+
+    if (roleError || !isAdmin) {
+      console.error("Acesso negado: Usuário não é administrador", roleError);
+      throw redirect({
+        to: "/",
+      });
     }
   },
   component: AdminLayout,
