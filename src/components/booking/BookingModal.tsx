@@ -284,6 +284,7 @@ export function BookingModal() {
           customerName: clientName,
           mobilePhone: clientPhone,
           billingType: paymentMethod as any,
+          entityType: "appointment",
         },
       });
 

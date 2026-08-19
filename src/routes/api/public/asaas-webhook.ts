@@ -48,33 +48,34 @@ export const Route = createFileRoute("/api/public/asaas-webhook")({
               updateData.payment_method = payment.billingType;
             }
 
-            // Try updating orders first
+            // Try updating orders first where asaas_payment_id matches
             const { data: order } = await supabase
               .from("orders")
               .update(updateData)
-              .eq("id", orderId)
+              .eq("asaas_payment_id", payment.id)
               .select()
               .maybeSingle();
 
-            // If no order found, try appointments
-            if (!order) {
-              await supabase
-                .from("appointments")
-                .update({
-                  status: "confirmed",
-                  payment_status: "paid",
-                })
-                .eq("id", orderId);
-            }
+            // Also try updating appointments where asaas_payment_id matches
+            await supabase
+              .from("appointments")
+              .update({
+                status: "confirmed",
+                payment_status: "paid",
+              })
+              .eq("asaas_payment_id", payment.id);
           } else if (event === "PAYMENT_REFUNDED") {
-            await supabase.from("orders").update({ status: "REFUNDED" }).eq("id", orderId);
+            await supabase.from("orders").update({ status: "REFUNDED" }).eq("asaas_payment_id", payment.id);
             await supabase
               .from("appointments")
               .update({ status: "cancelled", payment_status: "refunded" })
-              .eq("id", orderId);
+              .eq("asaas_payment_id", payment.id);
           } else if (event === "PAYMENT_OVERDUE") {
-            await supabase.from("orders").update({ status: "OVERDUE" }).eq("id", orderId);
-            // We don't automatically cancel appointments for overdue, let admin decide
+            await supabase.from("orders").update({ status: "OVERDUE" }).eq("asaas_payment_id", payment.id);
+            await supabase
+              .from("appointments")
+              .update({ status: "pending", payment_status: "overdue" })
+              .eq("asaas_payment_id", payment.id);
           }
 
           return new Response("OK", { status: 200 });

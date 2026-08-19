@@ -182,6 +182,7 @@ export function ShoppingCart() {
           customerName: clientName,
           mobilePhone: clientPhone,
           billingType: method as any,
+          entityType: "order",
         },
       });
 

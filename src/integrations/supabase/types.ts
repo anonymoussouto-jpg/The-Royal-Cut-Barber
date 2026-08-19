@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       appointments: {
         Row: {
+          asaas_customer_id: string | null
+          asaas_payment_id: string | null
           barber_id: string
           client_id: string
           client_name: string | null
@@ -29,6 +31,8 @@ export type Database = {
           total_price: number
         }
         Insert: {
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
           barber_id: string
           client_id: string
           client_name?: string | null
@@ -42,6 +46,8 @@ export type Database = {
           total_price: number
         }
         Update: {
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
           barber_id?: string
           client_id?: string
           client_name?: string | null

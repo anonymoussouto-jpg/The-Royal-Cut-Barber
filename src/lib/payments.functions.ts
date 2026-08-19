@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
 
 export const createAsaasPayment = createServerFn({ method: "POST" })
   .validator((data: unknown) =>
@@ -12,12 +11,16 @@ export const createAsaasPayment = createServerFn({ method: "POST" })
         mobilePhone: z.string(),
         email: z.string().optional(),
         billingType: z.enum(["PIX", "CREDIT_CARD", "BOLETO"]),
+        entityType: z.enum(["order", "appointment"]).default("order"),
       })
       .parse(data),
   )
   .handler(async ({ data }) => {
-    // 1. Get Asaas Config from DB
-    const { data: settings } = await supabase.from("system_settings").select("key, value");
+    // We import supabaseAdmin inside the handler for server-side privileged access
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1. Get Asaas Config from DB using supabaseAdmin to ensure we can read settings
+    const { data: settings } = await supabaseAdmin.from("system_settings").select("key, value");
 
     const getSetting = (key: string) => {
       const setting = settings?.find((s) => s.key === key)?.value;
@@ -25,7 +28,7 @@ export const createAsaasPayment = createServerFn({ method: "POST" })
       try {
         if (typeof setting === "string") return JSON.parse(setting);
       } catch (e) {
-        // No specific error handling needed here as it's caught by the outer block
+        // Fallback for non-JSON strings
       }
       return setting;
     };
@@ -80,7 +83,7 @@ export const createAsaasPayment = createServerFn({ method: "POST" })
         value: data.amount,
         dueDate: new Date(Date.now() + 86400000).toISOString().split("T")[0], // 1 day from now
         externalReference: data.orderId,
-        description: `Pedido ${data.orderId.substring(0, 8)} - The Royal Cut`,
+        description: `${data.entityType === "appointment" ? "Agendamento" : "Pedido"} ${data.orderId.substring(0, 8)} - The Royal Cut`,
       }),
     });
     const payment = await paymentRes.json();
@@ -98,15 +101,26 @@ export const createAsaasPayment = createServerFn({ method: "POST" })
       qrCode = await qrCodeRes.json();
     }
 
-    // 5. Update Order in Supabase
-    await supabase
-      .from("orders")
-      .update({
-        asaas_payment_id: paymentId,
-        asaas_customer_id: customerId,
-        payment_method: data.billingType,
-      })
-      .eq("id", data.orderId);
+    // 5. Update Entity in Supabase
+    if (data.entityType === "appointment") {
+      await supabaseAdmin
+        .from("appointments")
+        .update({
+          asaas_payment_id: paymentId,
+          asaas_customer_id: customerId,
+          payment_status: "pending",
+        })
+        .eq("id", data.orderId);
+    } else {
+      await supabaseAdmin
+        .from("orders")
+        .update({
+          asaas_payment_id: paymentId,
+          asaas_customer_id: customerId,
+          payment_method: data.billingType,
+        })
+        .eq("id", data.orderId);
+    }
 
     return {
       paymentId,
