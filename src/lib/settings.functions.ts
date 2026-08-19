@@ -5,19 +5,21 @@ export const saveSystemSetting = createServerFn({ method: "POST" })
   .validator((data: any) => 
     z.object({
       key: z.string().min(1, "A chave de configuração é obrigatória"),
-      value: z.string().min(1, "O valor da configuração não pode estar vazio"),
+      value: z.string().nullable(),
     }).parse(data)
   )
   .handler(async ({ data }) => {
     console.log(`[AdminSettings] Iniciando salvamento: key=${data.key}`);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     
+    let finalValue = data.value;
+    
     // Basic validation for common keys
     if (data.key.includes("api_key") || data.key.includes("secret") || data.key.includes("token")) {
       console.log(`[AdminSettings] Processando chave sensível: ${data.key}`);
-      data.value = data.value.trim();
+      finalValue = finalValue?.trim() || "";
       
-      if (data.key.includes("gemini") && !data.value.startsWith("AI")) {
+      if (data.key.includes("gemini") && finalValue && !finalValue.startsWith("AI")) {
         console.warn(`[AdminSettings] Aviso: Chave Gemini '${data.key}' não começa com o prefixo esperado 'AI'`);
       }
     }
@@ -27,7 +29,7 @@ export const saveSystemSetting = createServerFn({ method: "POST" })
       .upsert(
         { 
           key: data.key, 
-          value: data.value,
+          value: finalValue,
           updated_at: new Date().toISOString()
         },
         { onConflict: 'key' }
