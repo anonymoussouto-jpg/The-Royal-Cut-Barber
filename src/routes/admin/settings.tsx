@@ -4,10 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Cpu, Wallet, Loader2, CreditCard, ShieldCheck, Percent, Table } from "lucide-react";
+import { Cpu, Wallet, Loader2, CreditCard, ShieldCheck, Percent, Table, CheckCircle2, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { saveSystemSetting, validateAiKey } from "@/lib/settings.functions";
 import {
   Select,
   SelectContent,
@@ -25,6 +27,9 @@ function AdminSettings() {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [services, setServices] = useState<any[]>([]);
+  const [validating, setValidating] = useState<Record<string, boolean>>({});
+  const saveSettingFn = useServerFn(saveSystemSetting);
+  const validateKeyFn = useServerFn(validateAiKey);
 
   useEffect(() => {
     fetchSettings();
@@ -74,15 +79,8 @@ function AdminSettings() {
   const saveSetting = async (key: string, value: string) => {
     try {
       setLoading(true);
-      const { error } = await supabase.from("system_settings").upsert(
-        {
-          key,
-          value: value,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'key' }
-      );
-      if (error) throw error;
+      const result = await saveSettingFn({ data: { key, value } });
+      if (!result.success) throw new Error("Falha ao salvar");
       await fetchSettings();
       toast.success(`Configuração ${key} salva`);
     } catch (error) {
@@ -90,6 +88,30 @@ function AdminSettings() {
       toast.error(`Erro ao salvar ${key}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleValidateKey = async (keyName: string, provider: "gemini" | "groq") => {
+    const keyValue = settings[keyName];
+    if (!keyValue) {
+      toast.error("Insira uma chave para validar");
+      return;
+    }
+
+    try {
+      setValidating(prev => ({ ...prev, [keyName]: true }));
+      const result = await validateKeyFn({ data: { provider, key: keyValue } });
+      
+      if (result.valid) {
+        toast.success(`Chave ${keyName} é válida!`);
+        await saveSetting(keyName, keyValue);
+      } else {
+        toast.error(`Chave inválida: ${result.message}`);
+      }
+    } catch (error) {
+      toast.error("Erro ao validar chave");
+    } finally {
+      setValidating(prev => ({ ...prev, [keyName]: false }));
     }
   };
 
@@ -254,30 +276,82 @@ function AdminSettings() {
               <CardContent className="space-y-6">
                 <div className="grid gap-4">
                   <Label>Google Gemini (Principal)</Label>
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <Input
-                        key={`gemini-${i}`}
-                        type="password"
-                        placeholder={`Gemini API Key ${i}`}
-                        value={settings[`gemini_api_key_${i}`] || ""}
-                        onChange={(e) => saveSetting(`gemini_api_key_${i}`, e.target.value)}
-                      />
-                    ))}
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => {
+                      const keyName = `gemini_api_key_${i}`;
+                      return (
+                        <div key={keyName} className="flex gap-2">
+                          <div className="flex-1">
+                            <Input
+                              type="password"
+                              placeholder={`Gemini API Key ${i}`}
+                              value={settings[keyName] || ""}
+                              onChange={(e) => setSettings(prev => ({ ...prev, [keyName]: e.target.value }))}
+                            />
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => handleValidateKey(keyName, "gemini")}
+                            disabled={validating[keyName] || !settings[keyName]}
+                            className="shrink-0"
+                          >
+                            {validating[keyName] ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            )}
+                          </Button>
+                          <Button 
+                            variant="secondary"
+                            onClick={() => saveSetting(keyName, settings[keyName] || "")}
+                            disabled={loading || !settings[keyName]}
+                          >
+                            Salvar
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
                 <div className="grid gap-4 pt-4 border-t border-border/40">
                   <Label>Groq Llama 3 (Fallback)</Label>
-                  <div className="space-y-2">
-                    {[1, 2].map((i) => (
-                      <Input
-                        key={`groq-${i}`}
-                        type="password"
-                        placeholder={`Groq API Key ${i}`}
-                        value={settings[`groq_api_key_${i}`] || ""}
-                        onChange={(e) => saveSetting(`groq_api_key_${i}`, e.target.value)}
-                      />
-                    ))}
+                  <div className="space-y-4">
+                    {[1, 2].map((i) => {
+                      const keyName = `groq_api_key_${i}`;
+                      return (
+                        <div key={keyName} className="flex gap-2">
+                          <div className="flex-1">
+                            <Input
+                              type="password"
+                              placeholder={`Groq API Key ${i}`}
+                              value={settings[keyName] || ""}
+                              onChange={(e) => setSettings(prev => ({ ...prev, [keyName]: e.target.value }))}
+                            />
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => handleValidateKey(keyName, "groq")}
+                            disabled={validating[keyName] || !settings[keyName]}
+                            className="shrink-0"
+                          >
+                            {validating[keyName] ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            )}
+                          </Button>
+                          <Button 
+                            variant="secondary"
+                            onClick={() => saveSetting(keyName, settings[keyName] || "")}
+                            disabled={loading || !settings[keyName]}
+                          >
+                            Salvar
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
