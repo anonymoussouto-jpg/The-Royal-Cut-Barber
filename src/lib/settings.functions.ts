@@ -9,21 +9,20 @@ export const saveSystemSetting = createServerFn({ method: "POST" })
     }).parse(data)
   )
   .handler(async ({ data }) => {
+    console.log(`[AdminSettings] Iniciando salvamento: key=${data.key}`);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     
     // Basic validation for common keys
     if (data.key.includes("api_key") || data.key.includes("secret") || data.key.includes("token")) {
-      // Remove whitespace which is a common copy-paste error
+      console.log(`[AdminSettings] Processando chave sensível: ${data.key}`);
       data.value = data.value.trim();
       
-      // Basic format checks
       if (data.key.includes("gemini") && !data.value.startsWith("AI")) {
-        // Many Gemini keys start with AI... but not all. We'll just trim for now 
-        // as rigorous validation might block valid future keys.
+        console.warn(`[AdminSettings] Aviso: Chave Gemini '${data.key}' não começa com o prefixo esperado 'AI'`);
       }
     }
 
-    const { error } = await supabaseAdmin
+    const { error, data: result } = await supabaseAdmin
       .from("system_settings")
       .upsert(
         { 
@@ -32,13 +31,20 @@ export const saveSystemSetting = createServerFn({ method: "POST" })
           updated_at: new Date().toISOString()
         },
         { onConflict: 'key' }
-      );
+      )
+      .select();
 
     if (error) {
-      console.error(`Error saving setting ${data.key}:`, error);
-      throw new Error(`Erro no banco de dados: ${error.message}`);
+      console.error(`[AdminSettings] ERRO CRÍTICO ao salvar ${data.key}:`, {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw new Error(`Erro no banco de dados (${error.code}): ${error.message}`);
     }
 
+    console.log(`[AdminSettings] Sucesso ao salvar ${data.key}. Dados retornados:`, result?.[0]);
     return { success: true };
   });
 
