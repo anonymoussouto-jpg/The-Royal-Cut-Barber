@@ -58,10 +58,13 @@ export const validateAiKey = createServerFn({ method: "POST" })
     }).parse(data)
   )
   .handler(async ({ data }) => {
+    console.log(`[validateAiKey] Validando ${data.provider}`);
+    const key = data.key.trim();
+    
     if (data.provider === "gemini") {
       try {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${data.key}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -72,6 +75,7 @@ export const validateAiKey = createServerFn({ method: "POST" })
         );
         const json = await res.json();
         if (!res.ok) {
+          console.error(`[validateAiKey] Gemini Error:`, json);
           return { 
             valid: false, 
             message: json.error?.message || "Chave Gemini inválida ou sem permissão" 
@@ -79,6 +83,7 @@ export const validateAiKey = createServerFn({ method: "POST" })
         }
         return { valid: true };
       } catch (e) {
+        console.error(`[validateAiKey] Gemini Connection Error:`, e);
         return { valid: false, message: "Erro ao conectar com a API do Gemini" };
       }
     } else if (data.provider === "groq") {
@@ -87,7 +92,7 @@ export const validateAiKey = createServerFn({ method: "POST" })
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${data.key}`,
+            Authorization: `Bearer ${key}`,
           },
           body: JSON.stringify({
             model: "llama-3.3-70b-versatile",
@@ -97,6 +102,7 @@ export const validateAiKey = createServerFn({ method: "POST" })
         });
         const json = await res.json();
         if (!res.ok) {
+          console.error(`[validateAiKey] Groq Error:`, json);
           return { 
             valid: false, 
             message: json.error?.message || "Chave Groq inválida ou expirada" 
@@ -104,6 +110,7 @@ export const validateAiKey = createServerFn({ method: "POST" })
         }
         return { valid: true };
       } catch (e) {
+        console.error(`[validateAiKey] Groq Connection Error:`, e);
         return { valid: false, message: "Erro ao conectar com a API do Groq" };
       }
     }

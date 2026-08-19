@@ -10,6 +10,7 @@ import {
   Clock,
   Crown,
   LogOut,
+  Phone,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import { useBooking } from "@/hooks/use-booking";
 import { useChatbot } from "@/hooks/use-chatbot";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +32,29 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
   const booking = useBooking();
   const chatbot = useChatbot();
   const location = useLocation();
+  const [footerConfig, setFooterConfig] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    supabase
+      .from("system_settings")
+      .select("key, value")
+      .in("key", [
+        "instagram_url",
+        "google_maps_url",
+        "business_hours",
+        "whatsapp_number",
+        "address",
+        "barber_shop_name",
+      ])
+      .then(({ data }) => {
+        if (data) {
+          const map = Object.fromEntries(
+            data.map((d) => [d.key, String(d.value).replace(/^"|"$/g, "")]),
+          );
+          setFooterConfig(map);
+        }
+      });
+  }, []);
 
   const queryClient = useQueryClient();
   const { data: session } = useQuery({
@@ -271,7 +296,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col items-center md:items-start gap-4">
             <div className="flex items-center gap-2 text-xl font-serif font-bold text-primary">
               <Scissors className="w-6 h-6" />
-              <span>{settings?.["barber_shop_name"]?.toUpperCase() || "THE ROYAL CUT"}</span>
+              <span>{footerConfig["barber_shop_name"]?.toUpperCase() || "THE ROYAL CUT"}</span>
             </div>
             <p className="text-gray-400 text-sm italic">
               "Tudo que fizer, faça de coração - Col 3:23"
@@ -281,30 +306,50 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-2">
             <h4 className="font-bold text-primary mb-2">Local & Horário</h4>
             <a
-              href="https://maps.google.com"
+              href={footerConfig["google_maps_url"] || "https://maps.google.com"}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-gray-400 flex items-center justify-center md:justify-start gap-2 hover:text-primary transition-colors"
             >
-              <MapPin className="w-4 h-4" /> {settings?.["address"] || "Rua Principal, 123 - Centro"}
+              <MapPin className="w-4 h-4" /> {footerConfig["address"] || "Rua Principal, 123 - Centro"}
             </a>
             <div className="text-sm text-gray-400 flex items-center justify-center md:justify-start gap-2">
-              <Clock className="w-4 h-4" /> Seg a Sab: 9h–20h | Dom: Fechado
+              <Clock className="w-4 h-4" /> {footerConfig["business_hours"] || "Seg a Sab: 9h–20h | Dom: Fechado"}
             </div>
           </div>
 
           <div className="flex flex-col gap-4 items-center md:items-end">
             <div className="flex gap-4">
               <a
-                href="https://instagram.com"
+                href={footerConfig["instagram_url"] || "https://instagram.com"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 bg-white/5 rounded-full hover:bg-primary/20 transition-colors"
               >
-                <MessageSquare className="w-5 h-5 text-gray-400" />
+                <svg
+                  className="w-5 h-5 text-gray-400"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                  <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+                </svg>
               </a>
               <a
-                href={`https://wa.me/55${(settings?.["whatsapp_number"] || "11999999999").replace(/\D/g, "")}`}
+                href={footerConfig["google_maps_url"] || "https://maps.google.com"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 bg-white/5 rounded-full hover:bg-primary/20 transition-colors"
+              >
+                <MapPin className="w-5 h-5 text-gray-400" />
+              </a>
+              <a
+                href={`https://wa.me/55${(footerConfig["whatsapp_number"] || "11999999999").replace(/\D/g, "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 bg-white/5 rounded-full hover:bg-primary/20 transition-colors"
@@ -313,7 +358,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
               </a>
             </div>
             <p className="text-xs text-gray-600">
-              © 2026 The Royal Cut. Todos os direitos reservados.
+              © 2026 {footerConfig["barber_shop_name"] || "The Royal Cut"}. Todos os direitos reservados.
             </p>
           </div>
         </div>

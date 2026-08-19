@@ -99,9 +99,10 @@ export const createSubscriptionPayment = createServerFn({ method: "POST" })
           plan_name: data.planName,
           status: "pending",
           price_paid: data.planPrice,
-          barber_points_monthly: 0,
+          asaas_payment_id: payment.id,
+          asaas_customer_id: customerId,
+          started_at: new Date().toISOString(),
           expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          // Use any for fields that might be missing in generated types but exist in DB
         } as any)
         .select()
         .single();

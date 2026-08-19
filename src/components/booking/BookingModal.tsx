@@ -74,14 +74,28 @@ export function BookingModal() {
 
     const { data } = await supabase
       .from("appointments")
-      .select("start_time")
+      .select("start_time, services(duration_minutes)")
       .eq("barber_id", selectedBarber.id)
       .gte("start_time", startOfDay.toISOString())
       .lte("start_time", endOfDay.toISOString())
       .neq("status", "cancelled");
 
     if (data) {
-      setBookedSlots(data.map((app) => new Date(app.start_time).toISOString()));
+      const slots: string[] = [];
+      data.forEach((app: any) => {
+        const startTime = new Date(app.start_time);
+        const duration = app.services?.duration_minutes || 30;
+        
+        // Block slots based on duration (every 30 mins)
+        let currentTime = new Date(startTime);
+        const endTime = new Date(startTime.getTime() + duration * 60000);
+        
+        while (currentTime < endTime) {
+          slots.push(format(currentTime, "HH:mm"));
+          currentTime.setMinutes(currentTime.getMinutes() + 30);
+        }
+      });
+      setBookedSlots([...new Set(slots)]);
     }
   }, [selectedBarber, selectedDate]);
 
@@ -143,16 +157,16 @@ export function BookingModal() {
   // Duplicate function removed as it was replaced by a useCallback version above
 
   const timeSlots = [
-    "09:00",
-    "10:00",
-    "11:00",
-    "13:00",
-    "14:00",
-    "15:00",
-    "16:00",
-    "17:00",
-    "18:00",
-    "19:00",
+    "09:00", "09:30",
+    "10:00", "10:30",
+    "11:00", "11:30",
+    "13:00", "13:30",
+    "14:00", "14:30",
+    "15:00", "15:30",
+    "16:00", "16:30",
+    "17:00", "17:30",
+    "18:00", "18:30",
+    "19:00", "19:30",
   ];
 
   useEffect(() => {
@@ -211,6 +225,14 @@ export function BookingModal() {
   };
 
   const handleBooking = async (paymentMethod: "PIX" | "CREDIT_CARD" | "IN_PERSON") => {
+    // Basic availability check before submission
+    if (bookedSlots.includes(selectedTime!)) {
+      toast.error("Este horário acaba de ser ocupado. Por favor, escolha outro.");
+      fetchBookedSlots();
+      setStep("datetime");
+      return;
+    }
+
     setLoading(true);
     try {
       const startTime = new Date(selectedDate!);

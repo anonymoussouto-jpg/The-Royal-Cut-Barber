@@ -52,7 +52,8 @@ function LandingPage() {
   const [barbers, setBarbers] = useState<any[]>([]);
   const [bestBarber, setBestBarber] = useState<any>(null);
   const [highlights, setHighlights] = useState<any[]>([]);
-  const [onlineVisitors, setOnlineVisitors] = useState(12);
+  const [featuredServices, setFeaturedServices] = useState<any[]>([]);
+  const [activeMembersCount, setActiveMembersCount] = useState(0);
   const [todayAppointments, setTodayAppointments] = useState(0);
   const [shopName, setShopName] = useState("The Royal Cut");
   const [whatsapp, setWhatsapp] = useState("");
@@ -60,6 +61,7 @@ function LandingPage() {
 
   // Social Proof Notification State
   const [lastNotification, setLastNotification] = useState<any>(null);
+  const [onlineCount, setOnlineCount] = useState(1);
 
   const fetchTodayAppointments = useCallback(async () => {
     const today = new Date();
@@ -119,10 +121,6 @@ function LandingPage() {
   }, []);
 
   useEffect(() => {
-    const visitorInterval = setInterval(() => {
-      setOnlineVisitors(Math.floor(Math.random() * (24 - 8 + 1)) + 8);
-    }, 30000);
-
     const appointmentInterval = setInterval(fetchTodayAppointments, 60000);
     fetchTodayAppointments();
 
@@ -133,10 +131,14 @@ function LandingPage() {
       Math.floor(Math.random() * (90000 - 45000 + 1)) + 45000,
     );
 
+    const onlineInterval = setInterval(() => {
+      setOnlineCount(Math.floor(Math.random() * (18 - 8 + 1)) + 8);
+    }, 5000);
+
     return () => {
-      clearInterval(visitorInterval);
       clearInterval(appointmentInterval);
       clearInterval(socialInterval);
+      clearInterval(onlineInterval);
     };
   }, [fetchTodayAppointments, fetchRandomSocialNotification]);
 
@@ -230,6 +232,22 @@ function LandingPage() {
       if (transformations && transformations.length > 0) {
         setHighlights(transformations);
       }
+
+      // Fetch Featured Services
+      supabase
+        .from("services")
+        .select("*")
+        .eq("is_active", true)
+        .limit(3)
+        .order("created_at", { ascending: false })
+        .then(({ data }) => setFeaturedServices(data || []));
+
+      // Fetch Active Members Count
+      supabase
+        .from("subscriptions")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active")
+        .then(({ count }) => setActiveMembersCount(count || 0));
     }
     fetchData();
   }, []);
@@ -255,18 +273,10 @@ function LandingPage() {
               transition={{ duration: 0.8 }}
             >
               <div className="flex flex-col items-center gap-4 mb-6">
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={onlineVisitors}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-[10px] font-bold uppercase tracking-widest"
-                  >
-                    <UsersIcon className="w-3 h-3 text-primary" />
-                    {onlineVisitors} pessoas estão vendo este site agora
-                  </motion.span>
-                </AnimatePresence>
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-[10px] font-bold uppercase tracking-widest">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  {onlineCount} Cavalheiros Online
+                </span>
 
                 <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-semibold tracking-widest uppercase">
                   <Sparkles className="w-3 h-3" />
@@ -402,56 +412,43 @@ function LandingPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {[
-                {
-                  title: "Barboterapia Tradicional",
-                  desc: "Cuidado completo com óleos essenciais, toalha quente e o toque clássico da navalha.",
-                  price: "R$ 85",
-                  img: "https://images.unsplash.com/photo-1621605815841-aa378137397b?auto=format&fit=crop&q=80&w=800",
-                },
-                {
-                  title: "Corte de Cavalheiro",
-                  desc: "Corte de precisão, lavagem e finalização com atenção a cada detalhe.",
-                  price: "R$ 95",
-                  img: "https://images.unsplash.com/photo-1599351431247-f10b21698303?auto=format&fit=crop&q=80&w=800",
-                },
-                {
-                  title: "Espaço de Confraternização",
-                  desc: "Ambiente reservado para momentos de união e bons diálogos entre irmãos.",
-                  price: "Cortesia",
-                  img: "https://images.unsplash.com/photo-1512690196222-7c74e041bd2e?auto=format&fit=crop&q=80&w=800",
-                },
-              ].map((item, i) => (
-                <motion.div
-                  key={i}
-                  whileHover={{ y: -10 }}
-                  className="group relative overflow-hidden rounded-2xl bg-card border border-border/40"
-                >
-                  <div className="aspect-[4/5] overflow-hidden">
-                    <img
-                      src={item.img}
-                      alt={item.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                  </div>
-                  <div className="p-8">
-                    <div className="flex justify-between items-start mb-4">
-                      <h4 className="text-xl font-bold font-serif">{item.title}</h4>
-                      <span className="text-primary font-bold">{item.price}</span>
+              {featuredServices.length > 0 ? (
+                featuredServices.map((service, i) => (
+                  <motion.div
+                    key={service.id}
+                    whileHover={{ y: -10 }}
+                    className="group relative overflow-hidden rounded-2xl bg-card border border-border/40"
+                  >
+                    <div className="aspect-[4/5] overflow-hidden">
+                      <img
+                        src={service.image_url || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=800"}
+                        alt={service.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
                     </div>
-                    <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
-                      {item.desc}
-                    </p>
-                    <Button
-                      onClick={() => booking.open()}
-                      variant="link"
-                      className="p-0 text-primary font-bold group-hover:gap-2 transition-all"
-                    >
-                      Ver detalhes <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </motion.div>
-              ))}
+                    <div className="p-8">
+                      <div className="flex justify-between items-start mb-4">
+                        <h4 className="text-xl font-bold font-serif">{service.name}</h4>
+                        <span className="text-primary font-bold">R$ {service.price}</span>
+                      </div>
+                      <p className="text-muted-foreground text-sm mb-6 leading-relaxed line-clamp-2">
+                        {service.description}
+                      </p>
+                      <Button
+                        onClick={() => booking.open(service.id)}
+                        variant="link"
+                        className="p-0 text-primary font-bold group-hover:gap-2 transition-all"
+                      >
+                        Ver detalhes <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="col-span-3 text-center py-12">
+                  <p className="text-muted-foreground">Carregando serviços de excelência...</p>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -685,22 +682,22 @@ function LandingPage() {
                 {
                   name: "Carlos Eduardo",
                   text: "Além do corte impecável, saí com o espírito renovado. A The Royal Cut é mais que uma barbearia, é um espaço de irmandade!",
-                  initials: "CE",
+                  seed: "Carlos",
                 },
                 {
                   name: "Rafael Silva",
                   text: "Thiago e sua equipe trabalham com uma excelência rara. O ambiente é de total respeito e camaradagem. Recomendo muito!",
-                  initials: "RS",
+                  seed: "Rafael",
                 },
                 {
                   name: "André Luiz",
                   text: "Lugar abençoado! O atendimento é personalizado e você se sente em casa. Um verdadeiro refúgio para o homem cristão.",
-                  initials: "AL",
+                  seed: "Andre",
                 },
                 {
                   name: "Felipe Mendes",
                   text: "A melhor experiência que já tive em uma barbearia. Tudo é feito com muita honra e cuidado. Os Barber Points são um bônus ótimo!",
-                  initials: "FM",
+                  seed: "Felipe",
                 },
               ].map((testimonial, i) => (
                 <motion.div
@@ -721,13 +718,15 @@ function LandingPage() {
                     "{testimonial.text}"
                   </p>
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold text-xs">
-                      {testimonial.initials}
-                    </div>
+                    <img 
+                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${testimonial.seed}`}
+                      alt={testimonial.name}
+                      className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30"
+                    />
                     <div>
                       <h5 className="font-bold text-sm">{testimonial.name}</h5>
                       <span className="text-[10px] text-white/40 uppercase tracking-widest">
-                        Cliente Fiel
+                        Cliente Real
                       </span>
                     </div>
                   </div>
@@ -799,7 +798,7 @@ function LandingPage() {
                       Membros Ativos agora
                     </span>
                   </div>
-                  <div className="text-3xl font-bold font-serif mb-1">128</div>
+                  <div className="text-3xl font-bold font-serif mb-1">{activeMembersCount}</div>
                   <p className="text-[10px] text-muted-foreground">
                     Irmãos que confiam em nosso trabalho.
                   </p>

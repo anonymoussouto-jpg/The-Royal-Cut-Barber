@@ -147,6 +147,33 @@ export type Database = {
         }
         Relationships: []
       }
+      github_sync_logs: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          id: string
+          message: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          message?: string | null
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          message?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           asaas_customer_id: string | null
@@ -322,6 +349,8 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          asaas_customer_id: string | null
+          asaas_payment_id: string | null
           barber_points_monthly: number
           client_id: string
           created_at: string
@@ -333,6 +362,8 @@ export type Database = {
           status: string
         }
         Insert: {
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
           barber_points_monthly: number
           client_id: string
           created_at?: string
@@ -344,6 +375,8 @@ export type Database = {
           status?: string
         }
         Update: {
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
           barber_points_monthly?: number
           client_id?: string
           created_at?: string

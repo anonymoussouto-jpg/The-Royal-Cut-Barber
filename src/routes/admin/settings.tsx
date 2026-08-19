@@ -10,6 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { saveSystemSetting, validateAiKey } from "@/lib/settings.functions";
+import { triggerGithubSync, getGithubSyncLogs } from "@/lib/github.functions";
+import { RefreshCw } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -30,11 +32,26 @@ function AdminSettings() {
   const [validating, setValidating] = useState<Record<string, boolean>>({});
   const saveSettingFn = useServerFn(saveSystemSetting);
   const validateKeyFn = useServerFn(validateAiKey);
+  const syncGithubFn = useServerFn(triggerGithubSync);
+  const getLogsFn = useServerFn(getGithubSyncLogs);
+  const [syncing, setSyncing] = useState(false);
+  const [syncLogs, setSyncLogs] = useState<any[]>([]);
+  const REPO_NAME = "anonymoussouto-jpg/The-Royal-Cut-Barber";
 
   useEffect(() => {
     fetchSettings();
     fetchServicesCommission();
+    fetchSyncLogs();
   }, []);
+
+  const fetchSyncLogs = async () => {
+    try {
+      const logs = await getLogsFn();
+      setSyncLogs(logs);
+    } catch (e) {
+      console.error("Erro ao buscar logs", e);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -61,7 +78,8 @@ function AdminSettings() {
           [curr.key]: String(value ?? ""),
         };
       }, {});
-
+      
+      console.log("[AdminSettings] Configurações carregadas:", Object.keys(settingsMap));
       setSettings(settingsMap);
     } catch (error) {
       console.error("Error fetching settings:", error);
@@ -157,6 +175,23 @@ function AdminSettings() {
     toast.success("Configurações salvas com sucesso!");
   };
 
+  const handleSyncGithub = async () => {
+    try {
+      setSyncing(true);
+      const result = await syncGithubFn({ data: { message: "Sincronização manual via Painel Admin" } });
+      if (result.success) {
+        toast.success("GitHub sincronizado com sucesso!");
+        fetchSyncLogs();
+      } else {
+        toast.error(`Erro na sincronização: ${result.error}`);
+      }
+    } catch (error) {
+      toast.error("Erro ao disparar sincronização");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-4">
@@ -190,6 +225,12 @@ function AdminSettings() {
             className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-black"
           >
             Comissões por Serviço
+          </TabsTrigger>
+          <TabsTrigger
+            value="github"
+            className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-black"
+          >
+            GitHub
           </TabsTrigger>
         </TabsList>
 
@@ -264,6 +305,64 @@ function AdminSettings() {
               </CardContent>
             </Card>
 
+            {/* Global Settings */}
+            <Card className="border-border/40 bg-card/50">
+              <CardHeader>
+                <CardTitle>Configurações da Barbearia</CardTitle>
+                <p className="text-sm text-muted-foreground">Dados exibidos no site e rodapé.</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Nome da Barbearia</Label>
+                  <Input
+                    value={settings["barber_shop_name"] || ""}
+                    onChange={(e) => saveSetting("barber_shop_name", e.target.value)}
+                    placeholder="The Royal Cut"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>WhatsApp (Somente Números)</Label>
+                  <Input
+                    value={settings["whatsapp_number"] || ""}
+                    onChange={(e) => saveSetting("whatsapp_number", e.target.value)}
+                    placeholder="11999999999"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Endereço Completo</Label>
+                  <Input
+                    value={settings["address"] || ""}
+                    onChange={(e) => saveSetting("address", e.target.value)}
+                    placeholder="Rua Principal, 123 - Centro"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Instagram URL</Label>
+                  <Input
+                    value={settings["instagram_url"] || ""}
+                    onChange={(e) => saveSetting("instagram_url", e.target.value)}
+                    placeholder="https://instagram.com/theroyalcut"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Google Maps URL</Label>
+                  <Input
+                    value={settings["google_maps_url"] || ""}
+                    onChange={(e) => saveSetting("google_maps_url", e.target.value)}
+                    placeholder="https://maps.google.com/..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Horário de Funcionamento</Label>
+                  <Input
+                    value={settings["business_hours"] || ""}
+                    onChange={(e) => saveSetting("business_hours", e.target.value)}
+                    placeholder="Seg a Sab: 9h–20h | Dom: Fechado"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             {/* IA Configuration */}
             <Card className="border-border/40 bg-card/50">
               <CardHeader className="flex flex-row items-center gap-4">
@@ -288,7 +387,16 @@ function AdminSettings() {
                               type="password"
                               placeholder={`Gemini API Key ${i}`}
                               value={settings[keyName] || ""}
-                              onChange={(e) => setSettings(prev => ({ ...prev, [keyName]: e.target.value }))}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setSettings(prev => ({ ...prev, [keyName]: val }));
+                              }}
+                              onBlur={(e) => {
+                                // Apenas salva se houver valor, para evitar preenchimento indesejado
+                                if (e.target.value.trim()) {
+                                  saveSetting(keyName, e.target.value.trim());
+                                }
+                              }}
                             />
                           </div>
                           <Button 
@@ -328,7 +436,15 @@ function AdminSettings() {
                               type="password"
                               placeholder={`Groq API Key ${i}`}
                               value={settings[keyName] || ""}
-                              onChange={(e) => setSettings(prev => ({ ...prev, [keyName]: e.target.value }))}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setSettings(prev => ({ ...prev, [keyName]: val }));
+                              }}
+                              onBlur={(e) => {
+                                if (e.target.value.trim()) {
+                                  saveSetting(keyName, e.target.value.trim());
+                                }
+                              }}
                             />
                           </div>
                           <Button 
@@ -467,6 +583,39 @@ function AdminSettings() {
                     Endereço que aparecerá no rodapé do site.
                   </p>
                 </div>
+                <div className="grid gap-2">
+                  <Label>Instagram URL</Label>
+                  <Input
+                    placeholder="https://instagram.com/suabarbearia"
+                    value={settings["instagram_url"] || ""}
+                    onChange={(e) => {
+                      setSettings(prev => ({ ...prev, ["instagram_url"]: e.target.value }));
+                    }}
+                    onBlur={(e) => saveSetting("instagram_url", e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Google Maps URL</Label>
+                  <Input
+                    placeholder="https://maps.google.com/..."
+                    value={settings["google_maps_url"] || ""}
+                    onChange={(e) => {
+                      setSettings(prev => ({ ...prev, ["google_maps_url"]: e.target.value }));
+                    }}
+                    onBlur={(e) => saveSetting("google_maps_url", e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Horário de Funcionamento</Label>
+                  <Input
+                    placeholder="Seg a Sab: 9h–20h | Dom: Fechado"
+                    value={settings["business_hours"] || ""}
+                    onChange={(e) => {
+                      setSettings(prev => ({ ...prev, ["business_hours"]: e.target.value }));
+                    }}
+                    onBlur={(e) => saveSetting("business_hours", e.target.value)}
+                  />
+                </div>
                 <Button onClick={handleSaveAll} className="bg-primary text-primary-foreground">
                   Salvar Alterações
                 </Button>
@@ -577,6 +726,86 @@ function AdminSettings() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="github" className="space-y-6">
+          <Card className="border-border/40 bg-card/50">
+            <CardHeader className="flex flex-row items-center gap-4">
+              <RefreshCw className="w-6 h-6 text-primary" />
+              <div>
+                <CardTitle>Sincronização GitHub</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Mantenha seu repositório atualizado com as mudanças do projeto.
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="p-6 rounded-xl bg-zinc-900/50 border border-zinc-800 flex flex-col items-center text-center gap-4">
+                <div className="p-4 rounded-full bg-primary/10 text-primary">
+                  <RefreshCw className={`w-8 h-8 ${syncing ? 'animate-spin' : ''}`} />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-bold text-lg">Status do Repositório</h3>
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    Clique no botão abaixo para forçar a sincronização de todos os arquivos atuais para o repositório <strong>{REPO_NAME}</strong>.
+                  </p>
+                </div>
+                <Button 
+                  onClick={handleSyncGithub} 
+                  disabled={syncing}
+                  className="bg-primary text-black hover:bg-primary/90 min-w-[200px]"
+                >
+                  {syncing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sincronizando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Sincronizar Agora
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400">
+                <p className="font-bold mb-1">Nota Técnica:</p>
+                <p>A sincronização utiliza o Gateway Lovable para realizar commits diretos na branch <code>main</code>. Certifique-se de que sua conexão com o GitHub está ativa nas configurações do projeto.</p>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-bold text-sm uppercase tracking-wider text-primary">Histórico de Sincronização</h3>
+                <div className="space-y-2">
+                  {syncLogs.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4 italic">Nenhum log encontrado.</p>
+                  ) : (
+                    syncLogs.map((log: any) => (
+                      <div key={log.id} className="p-3 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between text-[11px]">
+                        <div className="flex flex-col gap-1 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${log.status === 'success' ? 'bg-green-500' : 'bg-red-500'}`} />
+                            <span className="font-bold uppercase tracking-tighter">{log.status === 'success' ? 'Sucesso' : 'Erro'}</span>
+                            <span className="text-white/40">{new Date(log.created_at).toLocaleString()}</span>
+                            {log.profiles?.full_name && (
+                              <span className="text-primary/60 font-medium">Por: {log.profiles.full_name}</span>
+                            )}
+                          </div>
+                          <p className="text-white/60 line-clamp-1 max-w-md">{log.message}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {log.details?.commit_message && (
+                            <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-[9px] uppercase font-bold">
+                              {log.details.commit_message}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -65,10 +65,36 @@ export const Route = createFileRoute("/api/public/asaas-webhook")({
               })
               .eq("asaas_payment_id", payment.id);
 
-            await supabaseAdmin
+            // Update subscriptions and award points
+            const { data: subscription } = await supabaseAdmin
               .from("subscriptions")
-              .update({ status: "active" } as any)
-              .eq("asaas_payment_id" as any, payment.id);
+              .select("id, client_id, barber_points_monthly")
+              .eq("asaas_payment_id", payment.id)
+              .maybeSingle();
+
+            if (subscription) {
+              await supabaseAdmin
+                .from("subscriptions")
+                .update({ status: "active" })
+                .eq("id", subscription.id);
+
+              if (subscription.barber_points_monthly > 0) {
+                const { data: profile } = await supabaseAdmin
+                  .from("profiles")
+                  .select("barber_points")
+                  .eq("id", subscription.client_id)
+                  .single();
+
+                if (profile) {
+                  await supabaseAdmin
+                    .from("profiles")
+                    .update({
+                      barber_points: (profile.barber_points || 0) + subscription.barber_points_monthly
+                    })
+                    .eq("id", subscription.client_id);
+                }
+              }
+            }
 
             console.log(`Payment confirmed for ID: ${payment.id}`);
           } else if (event === "PAYMENT_REFUNDED") {

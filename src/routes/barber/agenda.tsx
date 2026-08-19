@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   format,
@@ -46,6 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { v4 as uuidv4 } from "uuid";
+import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/barber/agenda")({
   component: BarberAgenda,
@@ -243,6 +244,17 @@ function BarberAgenda() {
     );
   };
 
+  const financialSummary = useMemo(() => {
+    const completed = appointments.filter(a => a.status === 'completed' || a.status === 'confirmed');
+    const totalRevenue = completed.reduce((sum, a) => sum + (a.total_price || 0), 0);
+    const totalCommission = completed.reduce((sum, a) => {
+      const barberPerc = (a.service as any)?.barber_percentage ?? 50;
+      return sum + ((a.total_price || 0) * barberPerc) / 100;
+    }, 0);
+    const pending = appointments.filter(a => a.status === 'pending').length;
+    return { total: completed.length, revenue: totalRevenue, commission: totalCommission, pending };
+  }, [appointments]);
+
   return (
     <div className="space-y-8 pb-20">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -334,6 +346,25 @@ function BarberAgenda() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+          <p className="text-xs text-white/40 uppercase tracking-widest font-bold">Atendimentos</p>
+          <h2 className="text-2xl font-serif font-black mt-1">{financialSummary.total}</h2>
+        </div>
+        <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+          <p className="text-xs text-white/40 uppercase tracking-widest font-bold">Receita Gerada</p>
+          <h2 className="text-2xl font-serif font-black mt-1">R$ {financialSummary.revenue.toFixed(2)}</h2>
+        </div>
+        <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
+          <p className="text-xs text-primary uppercase tracking-widest font-bold">Minha Comissão</p>
+          <h2 className="text-2xl font-serif font-black text-primary mt-1">R$ {financialSummary.commission.toFixed(2)}</h2>
+        </div>
+        <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+          <p className="text-xs text-white/40 uppercase tracking-widest font-bold">Pendentes</p>
+          <h2 className="text-2xl font-serif font-black mt-1">{financialSummary.pending}</h2>
         </div>
       </div>
 
