@@ -116,6 +116,38 @@ function BarberAgenda() {
     }
   };
 
+  const handleUpdateStatus = async (id: string, newStatus: string, additionalData = {}) => {
+    try {
+      const { error } = await supabase
+        .from("appointments")
+        .update({ status: newStatus, ...additionalData })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      // Dar 10 pontos automaticamente ao concluir
+      if (newStatus === "completed") {
+        const appointment = appointments.find((a) => a.id === id);
+        const POINTS_PER_SERVICE = 10;
+
+        if (appointment && appointment.client_id && !appointment.is_guest) {
+          await supabase.rpc("increment_barber_points", {
+            p_user_id: appointment.client_id,
+            p_points: POINTS_PER_SERVICE,
+          });
+          console.log(`Pontos concedidos ao cliente ${appointment.client_id}`);
+        }
+      }
+
+      toast.success(
+        `Agendamento ${newStatus === "confirmed" ? "confirmado" : newStatus === "completed" ? "concluído" : "atualizado"}!`,
+      );
+      fetchAppointments();
+    } catch (error) {
+      toast.error("Erro ao atualizar agendamento");
+    }
+  };
+
   const fetchAppointments = async () => {
     if (!barber) return;
     setLoading(true);
@@ -459,10 +491,20 @@ function BarberAgenda() {
                       >
                         <Phone className="w-3 h-3 mr-1" /> WhatsApp
                       </Button>
+                      {app.status !== "completed" && app.status !== "cancelled" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="bg-primary/10 border-primary/20 hover:bg-primary hover:text-black transition-all rounded-xl h-8 px-4 text-[9px] font-black uppercase tracking-widest text-primary hover:border-primary"
+                          onClick={() => handleUpdateStatus(app.id, "completed", { payment_status: "paid" })}
+                        >
+                          Concluir
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
-                        className="bg-transparent border-white/5 hover:bg-primary hover:text-black hover:border-primary transition-all rounded-xl h-8 px-4 text-[9px] font-black uppercase tracking-widest"
+                        className="bg-transparent border-white/5 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all rounded-xl h-8 px-4 text-[9px] font-black uppercase tracking-widest"
                       >
                         Detalhes
                       </Button>

@@ -62,6 +62,7 @@ function ProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -140,11 +141,33 @@ function ProfilePage() {
     }
   };
 
+  const handleCancelAppointment = async (appointmentId: string) => {
+    const confirmed = window.confirm("Tem certeza que deseja cancelar este agendamento?");
+    if (!confirmed) return;
+
+    setCancellingId(appointmentId);
+    try {
+      const { error } = await supabase
+        .from("appointments")
+        .update({ status: "cancelled" })
+        .eq("id", appointmentId)
+        .eq("client_id", profile?.id);
+
+      if (error) throw error;
+      toast.success("Agendamento cancelado com sucesso.");
+      loadData();
+    } catch {
+      toast.error("Não foi possível cancelar. Fale conosco no WhatsApp.");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   const getPointsLevel = (points: number) => {
-    if (points > 500) return { label: "Ouro", color: "text-yellow-500", progress: 100 };
-    if (points > 200)
-      return { label: "Prata", color: "text-gray-400", progress: (points / 500) * 100 };
-    return { label: "Bronze", color: "text-amber-700", progress: (points / 200) * 100 };
+    if (points >= 1000) return { name: "👑 Lenda Royal", next: null, color: "text-yellow-400", bg: "bg-yellow-400/10", progress: 100 };
+    if (points >= 500) return { name: "💎 Ouro Royal", next: 1000, color: "text-yellow-300", bg: "bg-yellow-300/10", progress: (points / 1000) * 100 };
+    if (points >= 200) return { name: "🥈 Prata Royal", next: 500, color: "text-gray-300", bg: "bg-gray-300/10", progress: (points / 500) * 100 };
+    return { name: "🥉 Bronze Royal", next: 200, color: "text-amber-600", bg: "bg-amber-600/10", progress: (points / 200) * 100 };
   };
 
   const level = getPointsLevel(profile?.barber_points || 0);
@@ -263,7 +286,15 @@ function ProfilePage() {
             <h3 className="font-bold flex items-center gap-2">
               <Award className="text-primary w-5 h-5" /> Barber Points
             </h3>
-            <span className={`font-black ${level.color}`}>{level.label}</span>
+            <span className={`font-black ${level.color}`}>{level.name}</span>
+          </div>
+          <div className={`flex items-center justify-between p-3 rounded-xl ${level.bg} mb-3`}>
+            <span className={`text-sm font-bold ${level.color}`}>{level.name}</span>
+            {level.next && (
+              <span className="text-xs text-muted-foreground">
+                Faltam {level.next - (profile?.barber_points || 0)} pts para o próximo nível
+              </span>
+            )}
           </div>
           <div className="text-4xl font-black text-primary mb-2">
             {profile?.barber_points || 0} pts
@@ -297,38 +328,104 @@ function ProfilePage() {
           {appointments.length === 0 ? (
             <p className="text-center py-10 text-white/30 italic">Nenhum agendamento encontrado.</p>
           ) : (
-            appointments.map((app) => (
-              <div
-                key={app.id}
-                className="p-4 bg-zinc-900/30 border border-white/5 rounded-xl flex items-center justify-between"
-              >
-                <div>
-                  <p className="font-bold">{app.services?.name}</p>
-                  <p className="text-xs text-white/50">
-                    {format(new Date(app.start_time), "dd/MM/yyyy HH:mm", { locale: ptBR })} •{" "}
-                    {app.barbers?.full_name}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right mr-2">
-                    <p className="text-xs font-bold text-primary">
-                      R$ {Number(app.total_price).toFixed(2)}
-                    </p>
-                    <p className="text-[9px] uppercase text-white/40">
-                      {app.payment_status || "pendente"}
-                    </p>
+            (() => {
+              const now = new Date();
+              const upcoming = appointments?.filter(a =>
+                new Date(a.start_time) > now && a.status !== 'cancelled'
+              ) || [];
+              const past = appointments?.filter(a =>
+                new Date(a.start_time) <= now || a.status === 'cancelled'
+              ) || [];
+
+              return (
+                <>
+                  {upcoming.length > 0 && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-bold flex items-center gap-2">
+                        <CalendarIcon className="w-5 h-5 text-primary" /> 📅 Próximos Agendamentos
+                      </h3>
+                      {upcoming.map((app) => (
+                        <div
+                          key={app.id}
+                          className="p-4 bg-zinc-900/30 border border-white/5 rounded-xl flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="font-bold">{app.services?.name}</p>
+                            <p className="text-xs text-white/50">
+                              {format(new Date(app.start_time), "dd/MM/yyyy HH:mm", { locale: ptBR })} •{" "}
+                              {app.barbers?.full_name}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right mr-2">
+                              <p className="text-xs font-bold text-primary">
+                                R$ {Number(app.total_price).toFixed(2)}
+                              </p>
+                              <p className="text-[9px] uppercase text-white/40">
+                                {app.payment_status || "pendente"}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => booking.open(app.services?.id)}
+                                size="sm"
+                                variant="outline"
+                                className="text-xs border-white/10 hover:bg-primary hover:text-black"
+                              >
+                                Reagendar
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleCancelAppointment(app.id)}
+                                disabled={cancellingId === app.id}
+                                className="text-xs"
+                              >
+                                {cancellingId === app.id ? "Cancelando..." : "Cancelar"}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="space-y-4 pt-4">
+                    <h3 className="text-lg font-bold flex items-center gap-2 text-white/60">
+                      <Loader2 className="w-5 h-5" /> 🕐 Histórico
+                    </h3>
+                    {past.length === 0 && upcoming.length === 0 ? (
+                      <p className="text-center py-10 text-white/30 italic">Nenhum agendamento encontrado.</p>
+                    ) : (
+                      past.map((app) => (
+                        <div
+                          key={app.id}
+                          className="p-4 bg-zinc-900/10 border border-white/5 rounded-xl flex items-center justify-between opacity-60"
+                        >
+                          <div>
+                            <p className="font-bold">{app.services?.name}</p>
+                            <p className="text-xs text-white/50">
+                              {format(new Date(app.start_time), "dd/MM/yyyy HH:mm", { locale: ptBR })} •{" "}
+                              {app.barbers?.full_name}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right mr-2">
+                              <p className="text-xs font-bold">
+                                R$ {Number(app.total_price).toFixed(2)}
+                              </p>
+                              <p className="text-[9px] uppercase text-white/40">
+                                {app.status === 'cancelled' ? 'cancelado' : (app.payment_status || "concluído")}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
-                  <Button
-                    onClick={() => booking.open(app.services?.id)}
-                    size="sm"
-                    variant="outline"
-                    className="border-white/10 hover:bg-primary hover:text-black"
-                  >
-                    Reagendar
-                  </Button>
-                </div>
-              </div>
-            ))
+                </>
+              );
+            })()
           )}
         </TabsContent>
 

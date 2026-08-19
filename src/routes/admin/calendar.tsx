@@ -75,6 +75,7 @@ function AdminCalendar() {
   const [services, setServices] = useState<Tables<"services">[]>([]);
   const [isWalkInOpen, setIsWalkInOpen] = useState(false);
   const [cancellingAppId, setCancellingAppId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   // Filtros
   const [filterDate, setFilterDate] = useState<Date | undefined>(new Date());
@@ -153,6 +154,21 @@ function AdminCalendar() {
         .eq("id", id);
 
       if (error) throw error;
+
+      // Dar 10 pontos automaticamente ao concluir
+      if (newStatus === "completed") {
+        const appointment = appointments.find((a) => a.id === id);
+        const POINTS_PER_SERVICE = 10;
+
+        if (appointment && appointment.client_id && !appointment.is_guest) {
+          await supabase.rpc("increment_barber_points", {
+            p_user_id: appointment.client_id,
+            p_points: POINTS_PER_SERVICE,
+          });
+          console.log(`Pontos concedidos ao cliente ${appointment.client_id}`);
+        }
+      }
+
       toast.success(
         `Agendamento ${newStatus === "confirmed" ? "confirmado" : newStatus === "completed" ? "concluído" : "atualizado"}!`,
       );
@@ -460,7 +476,71 @@ function AdminCalendar() {
       </div>
 
       {/* Lista de Agendamentos */}
-      <div className="grid gap-4">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-serif font-bold text-white">Agendamentos do Dia</h2>
+        <div className="flex gap-2 ml-auto">
+          <Button
+            variant={viewMode === "list" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+            className="text-xs"
+          >
+            ☰ Lista
+          </Button>
+          <Button
+            variant={viewMode === "grid" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("grid")}
+            className="text-xs"
+          >
+            ⏱ Grade
+          </Button>
+        </div>
+      </div>
+
+      {viewMode === "grid" && (
+        <div className="rounded-xl border border-white/10 overflow-hidden bg-zinc-950">
+          {["09:00","09:30","10:00","10:30","11:00","11:30","13:00","13:30",
+            "14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30",
+            "18:00","18:30","19:00","19:30"].map(slot => {
+            const appt = filteredAppointments?.find(a => {
+              const t = new Date(a.start_time);
+              return `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,
+    '0')}` === slot;
+            });
+
+            return (
+              <div key={slot} className={`flex items-stretch min-h-[52px] border-b border-white/5
+    last:border-0 ${appt ? 'bg-primary/5' : 'bg-transparent'}`}>
+                <div className="w-16 flex items-center justify-center text-xs text-white/40
+    border-r border-white/5 px-2 shrink-0 font-mono">
+                  {slot}
+                </div>
+                <div className="flex-1 p-1.5">
+                  {appt ? (
+                    <div className={`p-2 rounded-lg text-xs font-medium h-full flex items-center gap-2
+    ${
+                      appt.status === 'confirmed' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                      appt.status === 'cancelled' ? 'bg-red-500/10 text-red-400/60 line-through' :
+                      appt.status === 'completed' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                      'bg-primary/20 text-primary border border-primary/30'
+                    }`}>
+                      <span className="font-bold">{appt.client_name}</span>
+                      <span className="text-white/40">—</span>
+                      <span>{appt.services?.name || 'Serviço'}</span>
+                      <span className="ml-auto opacity-60">{appt.barbers?.full_name}</span>
+                    </div>
+                  ) : (
+                    <div className="h-full flex items-center pl-2 text-xs text-white/10 italic">disponível</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className={`grid gap-4 ${viewMode !== 'list' ? 'hidden' : ''}`}>
         {filteredAppointments.length === 0 ? (
           <div className="py-20 rounded-3xl border border-dashed border-white/10 flex flex-col items-center justify-center bg-white/5 gap-3">
             <CalendarDays className="w-12 h-12 text-white/10" />

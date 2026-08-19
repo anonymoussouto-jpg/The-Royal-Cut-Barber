@@ -264,9 +264,7 @@ export function AIChatInterface({ inline = false }: AIChatInterfaceProps) {
       }
     } catch (err: any) {
       console.error("AI Error:", err);
-      const errorMessage = err.message?.includes("API key") 
-        ? "Configuração de IA ausente ou inválida no painel Admin." 
-        : "Houve um erro técnico ao processar sua mensagem.";
+      const errorMessage = "Ops! Tive um probleminha aqui. 😅 Pode tentar de novo ou falar comigo pelo WhatsApp? 🔱";
       
       setError(errorMessage);
       

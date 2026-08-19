@@ -483,6 +483,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_barber_points: {
+        Args: { p_points: number; p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "barber"
