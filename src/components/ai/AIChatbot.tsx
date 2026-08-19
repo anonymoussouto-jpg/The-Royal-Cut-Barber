@@ -145,6 +145,17 @@ export function AIChatInterface({ inline = false }: AIChatInterfaceProps) {
       const productsContext = products?.map((p: any) => `${p.name}: R$ ${p.price}`).join(', ') || '';
       const shopContext = `Nome: ${getInfo('barber_shop_name')} | Endereço: ${getInfo('address')} | WhatsApp: ${getInfo('whatsapp_number')} | Horário: ${getInfo('business_hours') || 'Seg-Sab 9h-20h'}`;
 
+      // Search for potential date/barber in history to fetch real slots
+      let availableSlotsContext = "";
+      const lastMsg = history[history.length - 1];
+      if (history.length > 0 && lastMsg) {
+        const lastUserMsg = lastMsg.content.toLowerCase();
+        if (lastUserMsg.includes('horário') || lastUserMsg.includes('disponível') || lastUserMsg.includes('quando')) {
+           // Logic to fetch slots could go here using getAvailableSlots
+           // For now, we rely on the prompt instructing the AI to guide the user
+        }
+      }
+
       const result = await getChatbotFn({ 
         data: { 
           messages: history.map(m => ({ role: m.role, content: m.content })), 
@@ -482,11 +493,11 @@ export function AIChatInterface({ inline = false }: AIChatInterfaceProps) {
                     placeholder="Como posso ajudar?"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                    className="rounded-full bg-background border-border/40"
+                    onKeyDown={(e) => e.key === "Enter" && message.length <= 500 && handleSend()}
+                    className={`rounded-full bg-background border-border/40 ${message.length > 500 ? 'border-red-500' : ''}`}
                   />
                   <div className="flex justify-end px-1 mt-0.5">
-                    <span className={`text-[10px] ${message.length > 450 ? 'text-red-400' : 'text-muted-foreground/50'}`}>
+                    <span className={`text-[10px] ${message.length > 500 ? 'text-red-400 font-bold' : message.length > 450 ? 'text-orange-400' : 'text-muted-foreground/50'}`}>
                       {message.length}/500
                     </span>
                   </div>
@@ -506,8 +517,9 @@ export function AIChatInterface({ inline = false }: AIChatInterfaceProps) {
                 )}
                 <Button
                   onClick={() => handleSend()}
+                  disabled={message.length > 500 || !message.trim() || isTyping}
                   size="icon"
-                  className="rounded-full shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 w-10 h-10"
+                  className="rounded-full shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 w-10 h-10 disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
