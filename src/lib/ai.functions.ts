@@ -1,9 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
+
 
 export const getAiSettings = createServerFn({ method: "GET" }).handler(
   async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("system_settings")
       .select("key, value")
@@ -23,14 +24,17 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
     }).parse(data)
   )
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     console.log("[Chatbot] Fetching settings...");
     const { data: allSettings, error: settingsError } = await supabaseAdmin
       .from("system_settings")
       .select("key, value");
 
-    if (settingsError) {
-      console.error("[Chatbot] Error fetching settings:", settingsError);
-      return { content: "Erro ao acessar configurações do sistema." };
+    if (settingsError || !allSettings || allSettings.length === 0) {
+      console.error("[Chatbot] Erro ou sem acesso às configurações. Verifique SUPABASE_SERVICE_ROLE_KEY nas variáveis de ambiente da Lovable.", settingsError);
+      return { 
+        content: "Olá! Sou a Royal IA. No momento estou em configuração. Por favor, entre em contato pelo WhatsApp para agendamentos. 🔱" 
+      };
     }
 
     const getSetting = (key: string) => {
@@ -63,6 +67,13 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
       getSetting("groq_api_key_2"),
     ].filter(Boolean);
 
+    if (geminiKeys.length === 0 && groqKeys.length === 0) {
+      console.error("[Chatbot] Nenhuma chave de API encontrada. Cadastre suas chaves Gemini ou Groq em Admin > Configurações.");
+      return {
+        content: "Olá! Sou a Royal IA. Para começar a funcionar, o administrador precisa cadastrar as chaves de API em Configurações. 🔱"
+      };
+    }
+
     console.log(`[Chatbot] Gemini keys: ${geminiKeys.length}, Groq keys: ${groqKeys.length}`);
 
     let history = [...data.messages];
@@ -78,21 +89,22 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
           parts: [{ text: m.content }],
         }));
         
-        const payload = {
-          contents: geminiHistory,
-          system_instruction: { parts: [{ text: finalSystemPrompt }] },
-          generationConfig: {
-            maxOutputTokens: aiMaxChars ? parseInt(aiMaxChars) : 150,
-            temperature: 0.7,
-          }
-        };
-
+        // Use v1 instead of v1beta and put system instruction in messages for better compatibility
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${key}`,
+          `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+              contents: [
+                { role: "user", parts: [{ text: `INSTRUÇÃO DE SISTEMA: ${finalSystemPrompt}` }] },
+                ...geminiHistory
+              ],
+              generationConfig: {
+                maxOutputTokens: aiMaxChars ? parseInt(aiMaxChars) : 150,
+                temperature: 0.7,
+              }
+            }),
           }
         );
 
@@ -106,28 +118,6 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
         } else {
           const err = await res.json().catch(() => ({ error: { message: "Unknown error" } }));
           console.error(`[Chatbot] Gemini API Error (${res.status}):`, err);
-          
-          if (res.status === 404) {
-             console.log("[Chatbot] Gemini v1beta 404, trying v1...");
-             const v1Res = await fetch(
-              `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  contents: [
-                    { role: "user", parts: [{ text: `INSTRUÇÃO DE SISTEMA: ${finalSystemPrompt}` }] },
-                    ...geminiHistory
-                  ]
-                }),
-              }
-            );
-            if (v1Res.ok) {
-              const v1Json = await v1Res.json();
-              const v1Text = v1Json.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (v1Text) return { content: v1Text };
-            }
-          }
         }
       } catch (e) {
         console.error("[Chatbot] Gemini connection error:", e);
@@ -138,7 +128,7 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
     for (const key of groqKeys) {
       try {
         console.log("[Chatbot] Trying Groq...");
-        const groqModel = "llama-3.3-70b-versatile";
+        const groqModel = "llama-3.1-70b-versatile";
         
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
