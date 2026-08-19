@@ -5,7 +5,7 @@ import { z } from "zod";
 export const getAiSettings = createServerFn({ method: "GET" }).handler(
   async () => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (supabaseAdmin as any)
       .from("system_settings")
       .select("key, value")
       .in("key", ["whatsapp_number", "address", "barber_shop_name"]);
@@ -26,19 +26,19 @@ export const getChatbotResponse = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     console.log("[Chatbot] Fetching settings...");
-    const { data: allSettings, error: settingsError } = await supabaseAdmin
+    const { data: allSettings, error: settingsError } = await (supabaseAdmin as any)
       .from("system_settings")
       .select("key, value");
 
     if (settingsError || !allSettings || allSettings.length === 0) {
-      console.error("[Chatbot] Erro ou sem acesso às configurações. Verifique SUPABASE_SERVICE_ROLE_KEY nas variáveis de ambiente da Lovable.", settingsError);
+      console.error("[Chatbot] Erro ou sem acesso às configurações:", settingsError);
       return { 
-        content: "Olá! Sou a Royal IA. No momento estou em configuração. Por favor, entre em contato pelo WhatsApp para agendamentos. 🔱" 
+        content: `Desculpe, a Royal IA está em manutenção técnica (Erro: ${settingsError?.message || 'Sem dados'}). Verifique as chaves no Admin. 🔱` 
       };
     }
 
     const getSetting = (key: string) => {
-      const row = allSettings?.find((s) => s.key === key);
+      const row = allSettings?.find((s: any) => s.key === key);
       if (!row) return "";
       const val = row.value;
       try {

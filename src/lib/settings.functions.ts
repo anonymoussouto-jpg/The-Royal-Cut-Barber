@@ -24,7 +24,7 @@ export const saveSystemSetting = createServerFn({ method: "POST" })
       }
     }
 
-    const { error, data: result } = await supabaseAdmin
+    const { error, data: result } = await (supabaseAdmin as any)
       .from("system_settings")
       .upsert(
         { 
@@ -115,4 +115,59 @@ export const validateAiKey = createServerFn({ method: "POST" })
       }
     }
     return { valid: false, message: "Provedor desconhecido" };
+  });
+
+export const checkAsaasConnection = createServerFn({ method: "POST" })
+  .validator((data: any) => 
+    z.object({
+      apiKey: z.string().min(1, "API Key é obrigatória"),
+      env: z.enum(["sandbox", "production"]),
+    }).parse(data)
+  )
+  .handler(async ({ data }) => {
+    const baseUrl = data.env === "production" 
+      ? "https://www.asaas.com/api/v3" 
+      : "https://sandbox.asaas.com/api/v3";
+    
+    try {
+      const res = await fetch(`${baseUrl}/merchants/account`, {
+        headers: {
+          "access_token": data.apiKey,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      const json = await res.json();
+      if (!res.ok) {
+        return { 
+          success: false, 
+          message: json.errors?.[0]?.description || "Chave Asaas inválida ou expirada" 
+        };
+      }
+      return { success: true, accountName: json.companyName || json.name };
+    } catch (e) {
+      return { success: false, message: "Erro ao conectar com o Asaas" };
+    }
+  });
+
+export const getSystemStats = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    
+    const [
+      { count: usersCount },
+      { count: appointmentsCount },
+      { count: servicesCount }
+    ] = await Promise.all([
+      (supabaseAdmin as any).from("profiles").select("*", { count: 'exact', head: true }),
+      (supabaseAdmin as any).from("appointments").select("*", { count: 'exact', head: true }),
+      (supabaseAdmin as any).from("services").select("*", { count: 'exact', head: true })
+    ]);
+    
+    return {
+      users: usersCount || 0,
+      appointments: appointmentsCount || 0,
+      services: servicesCount || 0,
+      lastUpdate: new Date().toISOString()
+    };
   });

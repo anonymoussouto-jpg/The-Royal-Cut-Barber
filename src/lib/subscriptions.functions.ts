@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+
 
 const subscriptionSchema = z.object({
   planName: z.string(),
@@ -13,15 +14,16 @@ const subscriptionSchema = z.object({
 export const createSubscriptionPayment = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => subscriptionSchema.parse(data))
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     console.log("Starting subscription payment creation...", data);
 
     // 1. Get Asaas Config
-    const { data: settings } = await supabaseAdmin
+    const { data: settings } = await (supabaseAdmin as any)
       .from("system_settings")
       .select("key, value");
 
-    const asaasKeyRaw = settings?.find((s) => s.key === "asaas_api_key")?.value;
-    const asaasEnvRaw = settings?.find((s) => s.key === "asaas_env")?.value || "sandbox";
+    const asaasKeyRaw = settings?.find((s: any) => s.key === "asaas_api_key")?.value;
+    const asaasEnvRaw = settings?.find((s: any) => s.key === "asaas_env")?.value || "sandbox";
     
     const asaasKey = typeof asaasKeyRaw === 'string' ? asaasKeyRaw : String(asaasKeyRaw);
     const asaasEnv = typeof asaasEnvRaw === 'string' ? asaasEnvRaw : String(asaasEnvRaw);
@@ -92,7 +94,7 @@ export const createSubscriptionPayment = createServerFn({ method: "POST" })
       const pixData = await pixResp.json();
 
       // 5. Insert Subscription as 'pending'
-      const { data: subscription, error: subError } = await supabaseAdmin
+      const { data: subscription, error: subError } = await (supabaseAdmin as any)
         .from("subscriptions")
         .insert({
           client_id: data.userId,

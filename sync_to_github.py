@@ -135,7 +135,7 @@ def sync():
             f"{GATEWAY_URL}/repos/{REPO_NAME}/git/commits",
             headers=headers,
             json={
-                "message": "Update: robust AI fallback, GitHub sync fixes, and Asaas tracking",
+                "message": sys.argv[1] if len(sys.argv) > 1 else "Update: persistence, error handling, and security fixes",
                 "tree": new_tree_sha,
                 "parents": [parent_commit_sha]
             },

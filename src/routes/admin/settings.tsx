@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { saveSystemSetting, validateAiKey } from "@/lib/settings.functions";
+import { saveSystemSetting, validateAiKey, checkAsaasConnection, getSystemStats } from "@/lib/settings.functions";
 import { triggerGithubSync, getGithubSyncLogs } from "@/lib/github.functions";
 import { RefreshCw } from "lucide-react";
 import {
@@ -30,8 +30,14 @@ function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [services, setServices] = useState<any[]>([]);
   const [validating, setValidating] = useState<Record<string, boolean>>({});
+  const [asaasStatus, setAsaasStatus] = useState<{ connected: boolean; name?: string; message?: string } | null>(null);
+  const [stats, setStats] = useState<any>(null);
+  
   const saveSettingFn = useServerFn(saveSystemSetting);
   const validateKeyFn = useServerFn(validateAiKey);
+  const checkAsaasFn = useServerFn(checkAsaasConnection);
+  const getStatsFn = useServerFn(getSystemStats);
+  
   const syncGithubFn = useServerFn(triggerGithubSync);
   const getLogsFn = useServerFn(getGithubSyncLogs);
   const [syncing, setSyncing] = useState(false);
@@ -42,7 +48,17 @@ function AdminSettings() {
     fetchSettings();
     fetchServicesCommission();
     fetchSyncLogs();
+    loadStats();
   }, []);
+
+  const loadStats = async () => {
+    try {
+      const data = await getStatsFn();
+      setStats(data);
+    } catch (e) {
+      console.error("Erro ao carregar stats", e);
+    }
+  };
 
   const fetchSyncLogs = async () => {
     try {
@@ -106,6 +122,32 @@ function AdminSettings() {
     } catch (error) {
       console.error("Error saving setting:", error);
       toast.error(`Erro ao salvar ${key}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckAsaas = async () => {
+    const key = settings["asaas_api_key"];
+    const env = (settings["asaas_env"] as "sandbox" | "production") || "sandbox";
+    
+    if (!key) {
+      toast.error("Insira a API Key do Asaas");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await checkAsaasFn({ data: { apiKey: key, env } });
+      if (result.success) {
+        setAsaasStatus({ connected: true, name: result.accountName });
+        toast.success("Conexão com Asaas estabelecida!");
+      } else {
+        setAsaasStatus({ connected: false, message: result.message });
+        toast.error(result.message || "Erro ao conectar com Asaas");
+      }
+    } catch (e) {
+      toast.error("Erro técnico na validação do Asaas");
     } finally {
       setLoading(false);
     }
@@ -221,10 +263,16 @@ function AdminSettings() {
             Geral
           </TabsTrigger>
           <TabsTrigger
+            value="chatbot"
+            className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-black"
+          >
+            Chatbot IA
+          </TabsTrigger>
+          <TabsTrigger
             value="commission"
             className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-black"
           >
-            Comissões por Serviço
+            Comissões
           </TabsTrigger>
           <TabsTrigger
             value="github"
@@ -236,6 +284,49 @@ function AdminSettings() {
 
         <TabsContent value="general" className="space-y-8">
           <div className="grid gap-8">
+            {/* System Status Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Usuários</p>
+                      <h3 className="text-2xl font-serif font-black text-primary">{stats?.users || 0}</h3>
+                    </div>
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Agendamentos</p>
+                      <h3 className="text-2xl font-serif font-black text-primary">{stats?.appointments || 0}</h3>
+                    </div>
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                      <Table className="w-5 h-5" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Serviços</p>
+                      <h3 className="text-2xl font-serif font-black text-primary">{stats?.services || 0}</h3>
+                    </div>
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                      <Cpu className="w-5 h-5" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             {/* Asaas Configuration */}
             <Card className="border-border/40 bg-card/50">
               <CardHeader className="flex flex-row items-center gap-4">
@@ -288,6 +379,24 @@ function AdminSettings() {
                       />
                     </div>
                   </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-primary/20 hover:bg-primary/10 text-primary uppercase text-[10px] font-bold tracking-widest"
+                    onClick={handleCheckAsaas}
+                    disabled={loading}
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                    Testar Conexão Asaas
+                  </Button>
+
+                  {asaasStatus && (
+                    <div className={`p-3 rounded-lg flex items-center gap-3 ${asaasStatus.connected ? 'bg-green-500/10 border border-green-500/20 text-green-500' : 'bg-red-500/10 border border-red-500/20 text-red-500'}`}>
+                      {asaasStatus.connected ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                      <div className="text-[10px] font-medium">
+                        {asaasStatus.connected ? `Conectado: ${asaasStatus.name}` : `Erro: ${asaasStatus.message}`}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-3">
@@ -362,8 +471,10 @@ function AdminSettings() {
                 </div>
               </CardContent>
             </Card>
+            </div>
+        </TabsContent>
 
-            {/* IA Configuration */}
+        <TabsContent value="chatbot" className="space-y-8">
             <Card className="border-border/40 bg-card/50">
               <CardHeader className="flex flex-row items-center gap-4">
                 <Cpu className="w-6 h-6 text-primary" />
@@ -530,98 +641,99 @@ function AdminSettings() {
               </CardContent>
             </Card>
 
-            {/* Payment Configuration (Fallback) */}
-            <Card className="border-border/40 bg-card/50">
-              <CardHeader className="flex flex-row items-center gap-4">
-                <Wallet className="w-6 h-6 text-primary" />
-                <div>
-                  <CardTitle>Chave PIX Manual (Backup)</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Usada caso o gateway automático esteja desativado.
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-2">
-                  <Label>Nome da Barbearia</Label>
-                  <Input
-                    placeholder="Ex: The Royal Cut"
-                    value={settings["barber_shop_name"] || ""}
-                    onChange={(e) => saveSetting("barber_shop_name", e.target.value)}
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    Nome exibido no site, recibos e mensagens automáticas.
-                  </p>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Chave Principal (CNPJ/Email)</Label>
-                  <Input
-                    placeholder="sua-chave@pix.com"
-                    value={settings["pix_key"] || ""}
-                    onChange={(e) => saveSetting("pix_key", e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>WhatsApp da Barbearia (Público)</Label>
-                  <Input
-                    placeholder="Ex: 11999999999"
-                    value={settings["whatsapp_number"] || ""}
-                    onChange={(e) => saveSetting("whatsapp_number", e.target.value)}
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    Número para o botão flutuante no site (apenas números com DDD).
-                  </p>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Endereço da Barbearia</Label>
-                  <Input
-                    placeholder="Rua Exemplo, 123 - Centro"
-                    value={settings["address"] || ""}
-                    onChange={(e) => saveSetting("address", e.target.value)}
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    Endereço que aparecerá no rodapé do site.
-                  </p>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Instagram URL</Label>
-                  <Input
-                    placeholder="https://instagram.com/suabarbearia"
-                    value={settings["instagram_url"] || ""}
-                    onChange={(e) => {
-                      setSettings(prev => ({ ...prev, ["instagram_url"]: e.target.value }));
-                    }}
-                    onBlur={(e) => saveSetting("instagram_url", e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Google Maps URL</Label>
-                  <Input
-                    placeholder="https://maps.google.com/..."
-                    value={settings["google_maps_url"] || ""}
-                    onChange={(e) => {
-                      setSettings(prev => ({ ...prev, ["google_maps_url"]: e.target.value }));
-                    }}
-                    onBlur={(e) => saveSetting("google_maps_url", e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Horário de Funcionamento</Label>
-                  <Input
-                    placeholder="Seg a Sab: 9h–20h | Dom: Fechado"
-                    value={settings["business_hours"] || ""}
-                    onChange={(e) => {
-                      setSettings(prev => ({ ...prev, ["business_hours"]: e.target.value }));
-                    }}
-                    onBlur={(e) => saveSetting("business_hours", e.target.value)}
-                  />
-                </div>
-                <Button onClick={handleSaveAll} className="bg-primary text-primary-foreground">
-                  Salvar Alterações
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+        </TabsContent>
+
+        <TabsContent value="commission" className="space-y-6">
+          <Card className="border-border/40 bg-card/50">
+            <CardHeader className="flex flex-row items-center gap-4">
+              <Wallet className="w-6 h-6 text-primary" />
+              <div>
+                <CardTitle>Chave PIX Manual (Backup)</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Usada caso o gateway automático esteja desativado.
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2">
+                <Label>Nome da Barbearia</Label>
+                <Input
+                  placeholder="Ex: The Royal Cut"
+                  value={settings["barber_shop_name"] || ""}
+                  onChange={(e) => saveSetting("barber_shop_name", e.target.value)}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Nome exibido no site, recibos e mensagens automáticas.
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label>Chave Principal (CNPJ/Email)</Label>
+                <Input
+                  placeholder="sua-chave@pix.com"
+                  value={settings["pix_key"] || ""}
+                  onChange={(e) => saveSetting("pix_key", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>WhatsApp da Barbearia (Público)</Label>
+                <Input
+                  placeholder="Ex: 11999999999"
+                  value={settings["whatsapp_number"] || ""}
+                  onChange={(e) => saveSetting("whatsapp_number", e.target.value)}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Número para o botão flutuante no site (apenas números com DDD).
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label>Endereço da Barbearia</Label>
+                <Input
+                  placeholder="Rua Exemplo, 123 - Centro"
+                  value={settings["address"] || ""}
+                  onChange={(e) => saveSetting("address", e.target.value)}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Endereço que aparecerá no rodapé do site.
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label>Instagram URL</Label>
+                <Input
+                  placeholder="https://instagram.com/suabarbearia"
+                  value={settings["instagram_url"] || ""}
+                  onChange={(e) => {
+                    setSettings(prev => ({ ...prev, ["instagram_url"]: e.target.value }));
+                  }}
+                  onBlur={(e) => saveSetting("instagram_url", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Google Maps URL</Label>
+                <Input
+                  placeholder="https://maps.google.com/..."
+                  value={settings["google_maps_url"] || ""}
+                  onChange={(e) => {
+                    setSettings(prev => ({ ...prev, ["google_maps_url"]: e.target.value }));
+                  }}
+                  onBlur={(e) => saveSetting("google_maps_url", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Horário de Funcionamento</Label>
+                <Input
+                  placeholder="Seg a Sab: 9h–20h | Dom: Fechado"
+                  value={settings["business_hours"] || ""}
+                  onChange={(e) => {
+                    setSettings(prev => ({ ...prev, ["business_hours"]: e.target.value }));
+                  }}
+                  onBlur={(e) => saveSetting("business_hours", e.target.value)}
+                />
+              </div>
+              <Button onClick={handleSaveAll} className="bg-primary text-primary-foreground">
+                Salvar Alterações
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="commission" className="space-y-6">

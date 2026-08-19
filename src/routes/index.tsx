@@ -13,7 +13,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import PublicLayout from "@/components/layout/PublicLayout";
-import { AIChatbot } from "@/components/ai/AIChatbot";
+import { AIChatbot, AIChatInterface } from "@/components/ai/AIChatbot";
 import { useBooking } from "@/hooks/use-booking";
 import { useChatbot } from "@/hooks/use-chatbot";
 import { BeforeAfterSlider } from "@/components/ui/before-after-slider";
@@ -807,6 +807,43 @@ function LandingPage() {
             </div>
           </div>
         </section>
+        
+        {/* Chat Interface Section */}
+        <section className="py-24 bg-zinc-950/50">
+          <div className="container px-6 mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <div>
+                <h2 className="text-sm font-semibold tracking-[0.3em] text-primary uppercase mb-4">
+                  Dúvidas ou Agendamento?
+                </h2>
+                <h3 className="text-4xl md:text-5xl font-serif font-bold mb-8">
+                  Fale com a <span className="text-primary italic">Royal IA</span>
+                </h3>
+                <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
+                  Nossa assistente virtual está pronta para ajudar você com horários, serviços, dúvidas sobre o Clube e muito mais. Atendimento instantâneo com a excelência que você merece.
+                </p>
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-3 text-sm text-white/70">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    Agendamento rápido via chat
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-white/70">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    Informações sobre todos os serviços
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-white/70">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    Dúvidas sobre o sistema de pontos
+                  </div>
+                </div>
+              </div>
+              <div className="relative">
+                <AIChatInterface inline={true} />
+              </div>
+            </div>
+          </div>
+        </section>
+
         <AIChatbot />
       </div>
     </PublicLayout>
