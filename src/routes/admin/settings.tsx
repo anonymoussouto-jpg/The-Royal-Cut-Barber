@@ -79,7 +79,9 @@ function AdminSettings() {
   const saveSetting = async (key: string, value: string) => {
     try {
       setLoading(true);
+      console.log(`[AdminSettings] Chamando saveSettingFn para: ${key}`);
       const result = await saveSettingFn({ data: { key, value } });
+      console.log(`[AdminSettings] Resposta de saveSettingFn para ${key}:`, result);
       if (!result.success) throw new Error("Falha ao salvar");
       await fetchSettings();
       toast.success(`Configuração ${key} salva`);
