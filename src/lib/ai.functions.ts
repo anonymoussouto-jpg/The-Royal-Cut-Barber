@@ -1,190 +1,140 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-
 export const getAiSettings = createServerFn({ method: "GET" }).handler(
   async () => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await (supabaseAdmin as any)
+    const { data, error } = await supabaseAdmin
       .from("system_settings")
       .select("key, value")
       .in("key", ["whatsapp_number", "address", "barber_shop_name"]);
-
     if (error) throw error;
     return data;
   }
 );
 
-export const getChatbotResponse = createServerFn({ method: "POST" })
-  .validator((data) =>
-    z.object({
-      messages: z.array(z.object({ role: z.string(), content: z.string() })),
-      servicesContext: z.string(),
-      barbersContext: z.string(),
-    }).parse(data)
-  )
+export const testApiKey = createServerFn({ method: "POST" })
+  .validator((data) => z.object({ keyName: z.string() }).parse(data))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    console.log("[Chatbot] Fetching settings...");
-    const { data: allSettings, error: settingsError } = await (supabaseAdmin as any)
-      .from("system_settings")
-      .select("key, value");
-
-    if (settingsError || !allSettings || allSettings.length === 0) {
-      console.error("[Chatbot] Erro ou sem acesso às configurações:", settingsError);
-      return { 
-        content: `Desculpe, a Royal IA está em manutenção técnica (Erro: ${settingsError?.message || 'Sem dados'}). Verifique as chaves no Admin. 🔱` 
-      };
-    }
-
-    const getSetting = (key: string) => {
-      const row = allSettings?.find((s: any) => s.key === key);
-      if (!row) return "";
-      const val = row.value;
+    const { keyName } = data;
+    const { data: row } = await (supabaseAdmin as any)
+      .from("system_settings").select("value").eq("key", keyName).maybeSingle();
+    if (!row?.value) return { status: "error" as const, message: `Chave '${keyName}' não encontrada. Salve-a primeiro.`, responseTime: 0 };
+    let apiKey = row.value;
+    try { apiKey = typeof apiKey === "string" && (apiKey.startsWith('"') || apiKey.startsWith("{")) ? JSON.parse(apiKey) : apiKey; apiKey = String(apiKey).trim(); } catch { apiKey = String(apiKey).trim(); }
+    if (!apiKey) return { status: "error" as const, message: "Chave vazia.", responseTime: 0 };
+    const t0 = performance.now();
+    if (keyName.startsWith("gemini")) {
       try {
-        const parsed = typeof val === "string" && (val.startsWith('"') || val.startsWith("{") || val.startsWith("[")) ? JSON.parse(val) : val;
-        return typeof parsed === "string" ? parsed.trim() : String(parsed).trim();
-      } catch {
-        return String(val).trim();
-      }
-    };
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Responda apenas: OK" }] }], generationConfig: { maxOutputTokens: 5 } }) });
+        const elapsed = Math.round(performance.now() - t0);
+        if (res.ok) { const j = await res.json(); return { status: "ok" as const, message: `Gemini OK (${elapsed}ms): "${j.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "OK"}"`, responseTime: elapsed }; }
+        const e = await res.json().catch(() => ({ error: { message: "Erro" } }));
+        return { status: "error" as const, message: `Gemini erro ${res.status}: ${e.error?.message}`, responseTime: elapsed };
+      } catch (e: any) { return { status: "error" as const, message: `Falha Gemini: ${e?.message}`, responseTime: Math.round(performance.now() - t0) }; }
+    }
+    if (keyName.startsWith("groq")) {
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model: "qwen/qwen3.6-27b", messages: [{ role: "user", content: "Responda apenas: OK" }], max_tokens: 5 }) });
+        const elapsed = Math.round(performance.now() - t0);
+        if (res.ok) { const j = await res.json(); return { status: "ok" as const, message: `Groq OK (${elapsed}ms): "${j.choices?.[0]?.message?.content?.trim() || "OK"}"`, responseTime: elapsed }; }
+        const e = await res.json().catch(() => ({ error: { message: "Erro" } }));
+        return { status: "error" as const, message: `Groq erro ${res.status}: ${e.error?.message}`, responseTime: elapsed };
+      } catch (e: any) { return { status: "error" as const, message: `Falha Groq: ${e?.message}`, responseTime: Math.round(performance.now() - t0) }; }
+    }
+    return { status: "error" as const, message: `Tipo não suportado: ${keyName}`, responseTime: 0 };
+  });
 
+export const getChatbotResponse = createServerFn({ method: "POST" })
+  .validator((data) => z.object({ messages: z.array(z.object({ role: z.string(), content: z.string() })), servicesContext: z.string(), barbersContext: z.string() }).parse(data))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const keysTried: any[] = [];
+    const saveLog = async (log: any) => { try { await (supabaseAdmin as any).from("system_settings").upsert({ key: "chatbot_last_log", value: JSON.stringify({ timestamp: new Date().toISOString(), keys_tried: keysTried, ...log }) }, { onConflict: "key" }); } catch {} };
+    const { data: allSettings, error: settingsError } = await (supabaseAdmin as any).from("system_settings").select("key, value");
+    if (settingsError || !allSettings?.length) { await saveLog({ success: false, error: settingsError?.message || "Sem dados" }); return { content: "⚠️ A Royal IA está em manutenção. Verifique as configurações no Admin." }; }
+    const getSetting = (key: string) => { const row = allSettings.find((s: any) => s.key === key); if (!row) return ""; const val = row.value; try { const p = typeof val === "string" && (val.startsWith('"') || val.startsWith("{") || val.startsWith("[")) ? JSON.parse(val) : val; return typeof p === "string" ? p.trim() : String(p).trim(); } catch { return String(val).trim(); } };
     const aiSystemPrompt = getSetting("ai_system_prompt");
     const aiMaxChars = getSetting("ai_max_chars");
-
-    let finalSystemPrompt = aiSystemPrompt || `Você é a Royal IA, assistente virtual da The Royal Cut. Atenda com excelência, honra e cavalheirismo.`;
-    finalSystemPrompt += `\n\nDADOS DA BARBEARIA:\nSERVIÇOS: ${data.servicesContext}\nEQUIPE: ${data.barbersContext}`;
-    if (aiMaxChars) finalSystemPrompt += `\n- REGRA: Não ultrapasse ${aiMaxChars} caracteres.`;
-
-    const geminiKeys = [
-      getSetting("gemini_api_key_1"),
-      getSetting("gemini_api_key_2"),
-      getSetting("gemini_api_key_3"),
-    ].filter(Boolean);
-
-    const groqKeys = [
-      getSetting("groq_api_key_1"),
-      getSetting("groq_api_key_2"),
-    ].filter(Boolean);
-
-    if (geminiKeys.length === 0 && groqKeys.length === 0) {
-      console.error("[Chatbot] Nenhuma chave de API encontrada. Cadastre suas chaves Gemini ou Groq em Admin > Configurações.");
-      return {
-        content: "Olá! Sou a Royal IA. Para começar a funcionar, o administrador precisa cadastrar as chaves de API em Configurações. 🔱"
-      };
-    }
-
-    console.log(`[Chatbot] Gemini keys: ${geminiKeys.length}, Groq keys: ${groqKeys.length}`);
-
+    const aiDelay = parseInt(getSetting("ai_response_delay_ms") || "0");
+    let prompt = aiSystemPrompt || "Você é a Royal IA, assistente virtual da The Royal Cut Barber do Thiago. Atenda com excelência, honra e cavalheirismo cristão.";
+    prompt += `\n\nSERVIÇOS: ${data.servicesContext}\nEQUIPE: ${data.barbersContext}`;
+    if (aiMaxChars) prompt += `\n- Não ultrapasse ${aiMaxChars} caracteres.`;
+    const gemini = ["gemini_api_key_1","gemini_api_key_2","gemini_api_key_3"].map(n => ({ name: n, key: getSetting(n) })).filter(e => e.key);
+    const groq = ["groq_api_key_1","groq_api_key_2"].map(n => ({ name: n, key: getSetting(n) })).filter(e => e.key);
+    if (!gemini.length && !groq.length) { await saveLog({ success: false, error: "Nenhuma chave cadastrada." }); return { content: "Olá! Sou a Royal IA. Administrador precisa cadastrar chaves Gemini ou Groq em Configurações. 🔱" }; }
     let history = [...data.messages];
-    while (history.length > 0 && history[0] && history[0].role !== "user") history.shift();
-    if (history.length === 0) return { content: "Olá! Como posso ajudar?" };
-
-    // Try Gemini
-    for (const key of geminiKeys) {
+    while (history.length > 0 && history[0]?.role !== "user") history.shift();
+    if (!history.length) return { content: "Olá! Como posso ajudar?" };
+    if (aiDelay > 0) await new Promise(r => setTimeout(r, aiDelay));
+    for (const item of gemini) {
+      const t0 = performance.now();
       try {
-        console.log("[Chatbot] Trying Gemini...");
-        const geminiHistory = history.map((m) => ({
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }],
-        }));
-        
-        // Use v1 instead of v1beta and put system instruction in messages for better compatibility
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [
-                { role: "user", parts: [{ text: `INSTRUÇÃO DE SISTEMA: ${finalSystemPrompt}` }] },
-                ...geminiHistory
-              ],
-              generationConfig: {
-                maxOutputTokens: aiMaxChars ? parseInt(aiMaxChars) : 150,
-                temperature: 0.7,
-              }
-            }),
+        const historyForGemini = history.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
+        const geminiPayload = {
+          contents: [
+            { role: "user", parts: [{ text: `INSTRUÇÃO DE SISTEMA (ATUE COM ESTA PERSONALIDADE): ${prompt}` }] },
+            ...historyForGemini
+          ],
+          generationConfig: { 
+            maxOutputTokens: aiMaxChars ? parseInt(aiMaxChars) : 1000, 
+            temperature: 0.7 
           }
-        );
-
-        if (res.ok) {
-          const json = await res.json();
-          const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) {
-            console.log("[Chatbot] Gemini Success");
-            return { content: text };
-          }
-        } else {
-          const err = await res.json().catch(() => ({ error: { message: "Unknown error" } }));
-          console.error(`[Chatbot] Gemini API Error (${res.status}):`, err);
-        }
-      } catch (e) {
-        console.error("[Chatbot] Gemini connection error:", e);
-      }
-    }
-
-    // Fallback to Groq
-    for (const key of groqKeys) {
-      try {
-        console.log("[Chatbot] Trying Groq...");
-        const groqModel = "llama-3.1-70b-versatile";
-        
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${key}`,
-          },
-          body: JSON.stringify({
-            model: groqModel,
-            messages: [
-              { role: "system", content: finalSystemPrompt },
-              ...history.map((m) => ({ role: m.role, content: m.content })),
-            ],
-            max_tokens: aiMaxChars ? parseInt(aiMaxChars) : 150,
-          }),
+        };
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${item.key}`, { 
+          method: "POST", 
+          headers: { "Content-Type": "application/json" }, 
+          body: JSON.stringify(geminiPayload) 
         });
-
-        if (res.ok) {
-          const json = await res.json();
-          const text = json.choices?.[0]?.message?.content;
-          if (text) {
-            console.log("[Chatbot] Groq Success");
-            return { content: text };
-          }
-        } else {
-          const err = await res.json().catch(() => ({ error: { message: "Unknown error" } }));
-          console.error(`[Chatbot] Groq API Error (${res.status}):`, err);
-          
-          if (err.error?.code === "model_not_found") {
-             console.log("[Chatbot] Groq model not found, trying llama-3.1-70b-versatile...");
-             const res2 = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${key}`,
-              },
-              body: JSON.stringify({
-                model: "llama-3.1-70b-versatile",
-                messages: [
-                  { role: "system", content: finalSystemPrompt },
-                  ...history.map((m) => ({ role: m.role, content: m.content })),
-                ],
-              }),
-            });
-            if (res2.ok) {
-              const json2 = await res2.json();
-              return { content: json2.choices?.[0]?.message?.content };
-            }
-          }
+        const elapsed = Math.round(performance.now() - t0);
+        if (res.ok) { 
+          const j = await res.json(); 
+          let text = j.candidates?.[0]?.content?.parts?.[0]?.text; 
+          if (text) { 
+            text = text.replace(/<[tT]hink>[\s\S]*?<\/[tT]hink>/g, '').trim(); 
+            keysTried.push({ keyName: item.name, provider: "gemini", status: "success", responseTimeMs: elapsed }); 
+            await saveLog({ success: true, provider_used: item.name, preview_response: text.slice(0, 150) }); 
+            return { content: text }; 
+          } 
         }
-      } catch (e) {
-        console.error("[Chatbot] Groq connection error:", e);
-      }
-    }
 
-    return {
-      content: "Desculpe, não consegui processar sua mensagem agora. Tente novamente em instantes.",
-    };
+        else { const e = await res.json().catch(() => ({ error: { message: "Erro" } })); keysTried.push({ keyName: item.name, provider: "gemini", status: "error", responseTimeMs: elapsed, error: e.error?.message }); }
+      } catch (e: any) { keysTried.push({ keyName: item.name, provider: "gemini", status: "error", responseTimeMs: Math.round(performance.now() - t0), error: e?.message }); }
+    }
+    for (const item of groq) {
+      const t0 = performance.now();
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", { 
+          method: "POST", 
+          headers: { 
+            "Content-Type": "application/json", 
+            Authorization: `Bearer ${item.key}` 
+          }, 
+          body: JSON.stringify({ 
+            model: "qwen/qwen3.6-27b", 
+
+
+
+            messages: [{ role: "system", content: prompt }, ...history], 
+            max_tokens: aiMaxChars ? parseInt(aiMaxChars) : 1000 
+          }) 
+        });
+        const elapsed = Math.round(performance.now() - t0);
+        if (res.ok) { 
+          const j = await res.json(); 
+          let text = j.choices?.[0]?.message?.content; 
+          if (text) { 
+            text = text.replace(/<[tT]hink>[\s\S]*?<\/[tT]hink>/g, '').trim(); 
+            keysTried.push({ keyName: item.name, provider: "groq", status: "success", responseTimeMs: elapsed }); 
+            await saveLog({ success: true, provider_used: item.name, preview_response: text.slice(0, 150) }); 
+            return { content: text }; 
+          } 
+        }
+
+        else { const e = await res.json().catch(() => ({ error: { message: "Erro" } })); keysTried.push({ keyName: item.name, provider: "groq", status: "error", responseTimeMs: elapsed, error: e.error?.message }); }
+      } catch (e: any) { keysTried.push({ keyName: item.name, provider: "groq", status: "error", responseTimeMs: Math.round(performance.now() - t0), error: e?.message }); }
+    }
+    await saveLog({ success: false, error: "Todas as chaves falharam." });
+    return { content: "Desculpe, não consegui processar agora. Tente novamente. 🔱" };
   });

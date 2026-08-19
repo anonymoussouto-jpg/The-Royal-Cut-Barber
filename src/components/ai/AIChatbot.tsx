@@ -113,9 +113,9 @@ export function AIChatInterface({ inline = false }: AIChatInterfaceProps) {
 
       const result = await getChatbotFn({ 
         data: { 
-          messages: history, 
+          messages: history.map(m => ({ role: m.role, content: m.content })), 
           servicesContext, 
-          barbersContext 
+          barbersContext,
         } 
       });
 

@@ -4,14 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Cpu, Wallet, Loader2, CreditCard, ShieldCheck, Percent, Table, CheckCircle2, AlertCircle } from "lucide-react";
+import { Cpu, Wallet, Loader2, CreditCard, ShieldCheck, Percent, Table, CheckCircle2, AlertCircle, Activity, Play, Terminal, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { saveSystemSetting, validateAiKey, checkAsaasConnection, getSystemStats } from "@/lib/settings.functions";
+import { testApiKey, getChatbotResponse } from "@/lib/ai.functions";
 import { triggerGithubSync, getGithubSyncLogs } from "@/lib/github.functions";
-import { RefreshCw } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -40,8 +40,16 @@ function AdminSettings() {
   
   const syncGithubFn = useServerFn(triggerGithubSync);
   const getLogsFn = useServerFn(getGithubSyncLogs);
+  const testApiKeyFn = useServerFn(testApiKey);
+  const testChatbotFn = useServerFn(getChatbotResponse);
+  
   const [syncing, setSyncing] = useState(false);
   const [syncLogs, setSyncLogs] = useState<any[]>([]);
+  const [keyStatuses, setKeyStatuses] = useState<Record<string, { status: "ok" | "error"; message: string; responseTime?: number }>>({});
+  const [testingKey, setTestingKey] = useState<Record<string, boolean>>({});
+  const [testingChatbot, setTestingChatbot] = useState(false);
+  const [chatbotTestResult, setChatbotTestResult] = useState<{ success: boolean; response?: string; error?: string } | null>(null);
+  const [lastLog, setLastLog] = useState<any>(null);
   const REPO_NAME = "anonymoussouto-jpg/The-Royal-Cut-Barber";
 
   useEffect(() => {
@@ -49,7 +57,13 @@ function AdminSettings() {
     fetchServicesCommission();
     fetchSyncLogs();
     loadStats();
+    loadLastChatbotLog();
   }, []);
+
+  const loadLastChatbotLog = () => {
+    supabase.from("system_settings").select("value").eq("key", "chatbot_last_log").maybeSingle()
+      .then(({ data }) => { if (data?.value) { try { setLastLog(JSON.parse(String(data.value))); } catch {} } });
+  };
 
   const loadStats = async () => {
     try {
@@ -231,6 +245,47 @@ function AdminSettings() {
       toast.error("Erro ao disparar sincronização");
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleTestKey = async (keyName: string) => {
+    setTestingKey(p => ({ ...p, [keyName]: true }));
+    try {
+      const result = await testApiKeyFn({ data: { keyName } });
+      setKeyStatuses(p => ({ ...p, [keyName]: { status: result.status, message: result.message, responseTime: result.responseTime } }));
+      result.status === "ok" ? toast.success(`✅ ${keyName}: OK (${result.responseTime}ms)`) : toast.error(`❌ ${keyName}: ${result.message}`);
+    } catch (e: any) {
+      setKeyStatuses(p => ({ ...p, [keyName]: { status: "error", message: e.message } }));
+      toast.error(`Erro ao testar ${keyName}`);
+    } finally {
+      setTestingKey(p => ({ ...p, [keyName]: false }));
+    }
+  };
+
+  const handleTestFullChatbot = async () => {
+    setTestingChatbot(true);
+    setChatbotTestResult(null);
+    try {
+      const res = await testChatbotFn({ 
+        data: { 
+          messages: [{ role: "user", content: "Olá! Quais serviços vocês oferecem?" }], 
+          servicesContext: "Corte Masculino: R$ 50, Barba: R$ 35", 
+          barbersContext: "Thiago" 
+        } 
+      });
+      if (res?.content) { 
+        setChatbotTestResult({ success: true, response: res.content }); 
+        toast.success("Chatbot respondeu!"); 
+      } else { 
+        setChatbotTestResult({ success: false, error: "Sem resposta." }); 
+        toast.error("Chatbot não respondeu."); 
+      }
+      loadLastChatbotLog();
+    } catch (e: any) {
+      setChatbotTestResult({ success: false, error: e.message });
+      toast.error("Erro ao testar chatbot.");
+    } finally {
+      setTestingChatbot(false);
     }
   };
 
@@ -638,6 +693,110 @@ function AdminSettings() {
                     onCheckedChange={(val) => saveSetting("ai_auto_fallback", val.toString())}
                   />
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/40 bg-card/50">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                    <Activity className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <CardTitle>🔬 Diagnóstico do Chatbot IA</CardTitle>
+                    <p className="text-sm text-muted-foreground">Teste cada chave individualmente e simule uma conversa real</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                    <ShieldCheck className="w-3 h-3" /> Status das Chaves de API
+                  </h4>
+                  {[
+                    { keyName: "gemini_api_key_1", label: "Gemini 1 — Principal" },
+                    { keyName: "gemini_api_key_2", label: "Gemini 2 — Reserva" },
+                    { keyName: "gemini_api_key_3", label: "Gemini 3 — Reserva 2" },
+                    { keyName: "groq_api_key_1", label: "Groq Llama 1 — Fallback" },
+                    { keyName: "groq_api_key_2", label: "Groq Llama 2 — Fallback 2" },
+                  ].map(({ keyName, label }) => {
+                    const st = keyStatuses[keyName];
+                    const hasKey = Boolean(settings[keyName]);
+                    return (
+                      <div key={keyName} className="p-3 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold">{label}</span>
+                            {st?.status === "ok" && <span className="text-[10px] text-green-500 font-bold uppercase">✅ OK ({st.responseTime}ms)</span>}
+                            {st?.status === "error" && <span className="text-[10px] text-red-500 font-bold uppercase">❌ ERRO</span>}
+                            {!st && <span className="text-[10px] text-muted-foreground italic">{hasKey ? "Não testada" : "Não cadastrada"}</span>}
+                          </div>
+                          {st?.message && <p className="text-[10px] text-white/60 mt-1">{st.message}</p>}
+                        </div>
+                        <Button onClick={() => handleTestKey(keyName)} disabled={testingKey[keyName] || !hasKey} className="text-xs h-8">
+                          {testingKey[keyName] ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Play className="w-3 h-3 mr-2" />}
+                          Testar
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-6 border-t border-white/5">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                        <Terminal className="w-3 h-3" /> Teste de Integração
+                      </h4>
+                      <p className="text-[10px] text-muted-foreground">Simula uma pergunta real passando por todo o fallback</p>
+                    </div>
+                    <Button onClick={handleTestFullChatbot} disabled={testingChatbot} className="bg-primary text-black">
+                      {testingChatbot ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                      Testar Chatbot
+                    </Button>
+                  </div>
+
+                  {chatbotTestResult && (
+                    <div className="mt-4 p-4 rounded-xl bg-black/60 border border-white/10 space-y-2">
+                      <p className="text-[10px] font-bold uppercase text-primary">{chatbotTestResult.success ? "✅ Resposta recebida:" : "❌ Erro:"}</p>
+                      <div className="text-xs text-white/80 leading-relaxed italic p-3 rounded-lg bg-white/5 border border-white/5 italic">
+                        {chatbotTestResult.response || chatbotTestResult.error}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {lastLog && (
+                  <Card className="bg-zinc-950 border-zinc-900 mt-6 overflow-hidden">
+                    <div className="p-3 bg-zinc-900 flex items-center justify-between border-b border-zinc-800">
+                      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/70">
+                        <Terminal className="w-3 h-3 text-primary" /> Último Log de Execução
+                      </div>
+                    </div>
+                    <CardContent className="p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[10px] text-white/40">{lastLog.timestamp ? new Date(lastLog.timestamp).toLocaleString("pt-BR") : ""}</div>
+                        <div className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${lastLog.success ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                          {lastLog.success ? "✅ SUCESSO" : "❌ FALHA"}
+                        </div>
+                      </div>
+
+                      {lastLog.provider_used && <p className="text-xs font-bold text-primary">Provedor: {lastLog.provider_used}</p>}
+                      
+                      <div className="space-y-2">
+                        {lastLog.keys_tried?.map((k: any, i: number) => (
+                          <div key={i} className="flex items-center justify-between text-[10px] border-b border-white/5 pb-1">
+                            <span className="text-white/60">#{i+1} {k.keyName}</span>
+                            <span className={k.status === 'success' ? 'text-green-500' : 'text-red-500'}>{k.status} {k.responseTimeMs}ms</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {lastLog.error && <div className="p-2 rounded bg-red-500/10 border border-red-500/20 text-[10px] text-red-400 font-mono">{lastLog.error}</div>}
+                      {lastLog.preview_response && <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-[10px] text-white/70 italic italic">"{lastLog.preview_response}"</div>}
+                    </CardContent>
+                  </Card>
+                )}
               </CardContent>
             </Card>
 
